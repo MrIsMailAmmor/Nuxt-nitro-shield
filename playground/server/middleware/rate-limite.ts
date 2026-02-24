@@ -1,67 +1,66 @@
-// file: src/runtime/server/middleware/rate-limit.ts
-import { defineEventHandler, getRequestIP, createError } from "h3";
-// Interface defining the shape of our stored data
-interface RateLimitRecord {
-  count: number;
-  resetAt: number; // Timestamp in milliseconds
-}
-
 export default defineEventHandler(async (event) => {
-  console.log("🚀 [Middleware] Requête interceptée sur :", event.node.req.url);
-  // 1. Bypass logic: Only intercept API routes to avoid blocking static assets
-  if (!event.path.startsWith("/api/")) {
-    return;
-  }
+  const url = event.node.req.url || "";
 
-  const storage = useStorage("ratelimit");
-  // Regarde d'abord si on simule une IP, sinon utilise la vraie méthode
+  // 🛑 Le filtre : on ignore le favicon et les fichiers internes de Nuxt
+  if (
+    url.startsWith("/_nuxt") ||
+    url.startsWith("/__nuxt") ||
+    url.includes("favicon.ico")
+  ) {
+    return; // On sort du middleware sans rien faire (ni compter, ni bloquer)
+  }
+  if (!url.startsWith("/api/")) {
+    return; // On ignore aussi les API pour ce test, mais tu peux les inclure si tu veux
+  }
+  const config = useRuntimeConfig();
   const ip =
     getHeader(event, "x-test-ip") || getRequestIP(event) || "ip-locale";
-  const storageKey = `ip:${ip}`;
+  const storage = useStorage();
+  const key = `rate-limit:${ip}`;
 
-  // Configuration (later, we will make this customizable via nuxt.config.ts)
-  const windowMs = 60000; // 1 minute time window
-  const maxRequests = 60; // Maximum allowed requests per window
+  // On lit les données, qui seront maintenant un objet et plus un simple nombre
+  const data = (await storage.getItem(key)) as {
+    count: number;
+    startTime: number;
+  } | null;
+
   const now = Date.now();
+  const timeWindow = config.rateLimit?.timeWindow || 60000;
+  const maxRequests = config.rateLimit?.maxRequests || 5;
 
-  try {
-    // 2. Retrieve the current record for this IP
-    let record = (await storage.getItem(storageKey)) as RateLimitRecord | null;
-    console.log(
-      `🕵️ [Rate Limiter] IP: ${ip} | Visites actuelles: ${record ? record.count : 0}`,
-    );
+  let currentCount = 0;
 
-    // 3. TTL Validation: Reset if no record exists or if the time window has passed
-    if (!record || record.resetAt < now) {
-      record = {
-        count: 1,
-        resetAt: now + windowMs,
-      };
+  if (data) {
+    // ÉTAPE A : L'utilisateur a déjà visité le site
+    // On vérifie si la fenêtre de temps (1 minute) est écoulée
+    if (now - data.startTime > timeWindow) {
+      // Le temps est écoulé ! On lui pardonne et on recommence à 1
+      currentCount = 1;
+      await storage.setItem(key, { count: currentCount, startTime: now });
+      console.warn(`🛑 Accès refusé pour : ${ip}`);
     } else {
-      // 4. Increment the request counter
-      record.count += 1;
-    }
+      // Le temps n'est pas écoulé, on continue de compter
+      currentCount = data.count + 1;
 
-    // 5. Save the updated state asynchronously
-    await storage.setItem(storageKey, record);
-
-    // 6. Enforce the limit (Fail-fast mechanism)
-    if (record.count > maxRequests) {
-      console.warn(`[Nitro-Shield] Blocked IP: ${ip} - Rate limit exceeded.`);
-
-      throw createError({
-        statusCode: 429,
-        statusMessage: "Too Many Requests",
-        message: "Rate limit exceeded. Please try again later.",
+      if (currentCount > maxRequests) {
+        console.warn(`🛑 Accès refusé pour : ${ip}`);
+        throw createError({
+          statusCode: 429,
+          message: "Trop de requêtes, réessaie dans une minute !",
+        });
+      }
+      // On sauvegarde le nouveau compte, en gardant l'heure de départ initiale
+      await storage.setItem(key, {
+        count: currentCount,
+        startTime: data.startTime,
       });
     }
-  } catch (error: any) {
-    // Fallback: If the storage engine crashes (e.g., Redis goes down),
-    // we let the request pass rather than taking down the whole API.
-    // However, we re-throw 429 errors so the user is actually blocked.
-    if (error.statusCode === 429) {
-      throw error;
-    }
-    console.error("[Nitro-Shield] Storage engine failure:", error.message);
+  } else {
+    console.log(`👋 Première visite de : ${ip}`);
+    // ÉTAPE B : C'est la toute première visite de l'utilisateur
+    currentCount = 1;
+    await storage.setItem(key, { count: currentCount, startTime: now });
   }
+
+  console.log(`⏱️ [Rate Limiter] IP: ${ip} | Visites: ${currentCount}`);
 });
