@@ -1,21 +1,46 @@
 import { defineNuxtModule, addServerHandler, createResolver } from "@nuxt/kit";
 
-export default defineNuxtModule({
+// 1. On définit l'interface de tes options
+export interface ModuleOptions {
+  /**
+   * Nombre maximum de requêtes autorisées
+   * @default 5
+   */
+  maxRequests: number;
+  /**
+   * Fenêtre de temps en millisecondes
+   * @default 60000
+   */
+  timeWindow: number;
+  /**
+   * Liste des adresses IP qui ne seront jamais bloquées
+   * @default []
+   */
+  whitelist: string[];
+}
+
+export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: "mon-super-rate-limiter",
-    configKey: "rateLimit",
+    name: "nuxt-nitro-shield",
+    configKey: "rateLimit", // the key in nuxt.config where users can set options
+  },
+  // 2.  we define the default options for the module
+  defaults: {
+    maxRequests: 5,
+    timeWindow: 60000,
+    whitelist: [],
   },
   setup(options, nuxt) {
-    const resolver = createResolver(import.meta.url);
+    const { resolve } = createResolver(import.meta.url);
 
-    // On enregistre le middleware serveur
+    // 3. we add a server middleware that will handle the rate limiting logic
+    const handlerPath = resolve("./runtime/server/middleware/rate-limite");
+
     addServerHandler({
-      handler: resolver.resolve("./runtime/server/middleware/rate-limite"),
+      middleware: true,
+      handler: handlerPath,
     });
 
-    // On peut aussi injecter les options par défaut ici
-    nuxt.options.runtimeConfig.rateLimit = {
-      ...nuxt.options.runtimeConfig.rateLimit,
-    };
+    console.log("🛡️ Nitro Shield : Ready and Typed !");
   },
 });

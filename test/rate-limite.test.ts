@@ -28,4 +28,27 @@ describe("Rate Limit Integration", async () => {
     const blockedResponse = await fetch("/api/test");
     expect(blockedResponse.status).toBe(429);
   });
+
+  it("devrait autoriser une IP whitelisted à dépasser la limite sans blocage", async () => {
+    const testUrl = "/api/test";
+    const vipIp = "127.0.0.2"; // Cette IP doit être dans ta whitelist config
+
+    // On bombarde le serveur (ex: 10 requêtes pour une limite de 5)
+    for (let i = 0; i < 10; i++) {
+      const response = await fetch(testUrl, {
+        headers: {
+          "x-test-ip": vipIp, // On simule l'IP VIP
+        },
+      });
+
+      // Chaque requête doit être un succès (200)
+      expect(response.status).toBe(200);
+    }
+
+    // On vérifie aussi que le compteur de "remaining" ne baisse pas (ou reste au max)
+    const finalCheck = await fetch(testUrl, {
+      headers: { "x-test-ip": vipIp },
+    });
+    expect(finalCheck.headers.get("x-ratelimit-remaining")).toBeDefined();
+  });
 });

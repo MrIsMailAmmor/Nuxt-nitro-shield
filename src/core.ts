@@ -3,6 +3,7 @@
 export interface RateLimitOptions {
   maxRequests: number;
   timeWindow: number; // en ms
+  whitelist?: string[];
 }
 
 export interface RateLimitResult {
@@ -25,6 +26,15 @@ export async function checkRateLimit(
 ): Promise<RateLimitResult> {
   const key = `rate-limit:${ip}`;
   const now = Date.now();
+  // 🛡️ Logique de Whitelist
+  if (options.whitelist && options.whitelist.includes(ip)) {
+    return {
+      currentCount: 0,
+      remaining: options.maxRequests,
+      resetTime: 0,
+      isBlocked: false,
+    };
+  }
 
   // Récupération sécurisée des données
   const data = (await getItem(key)) as {
