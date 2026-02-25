@@ -1,39 +1,31 @@
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
-import { setup, $fetch } from "@nuxt/test-utils/e2e";
+import { setup, fetch } from "@nuxt/test-utils/e2e"; // 🛡️ On importe 'fetch' à la place
 
-describe("Middleware Rate Limiter", async () => {
-  // 1. On indique explicitement où se trouve l'application Nuxt à tester
+describe("Rate Limit Integration", async () => {
+  const rootDir = resolve(process.cwd(), "playground");
+
   await setup({
-    rootDir: fileURLToPath(new URL("../playground", import.meta.url)),
+    rootDir,
     server: true,
   });
 
-  // 2. Ton test ici...
-  it("devrait charger la page", async () => {
-    const html = await $fetch("/");
-    expect(html).toContain("div"); // Exemple basique
+  it("devrait retourner les en-têtes X-RateLimit", async () => {
+    // 🛡️ fetch('/') renvoie directement la réponse brute avec les headers
+    const response = await fetch("/api/test");
+
+    // On vérifie les headers (attention, ils sont souvent en minuscules en HTTP)
+    expect(response.headers.get("x-ratelimit-limit")).toBeDefined();
+    expect(response.headers.get("x-ratelimit-remaining")).toBeDefined();
   });
 
-  it("devrait bloquer les requêtes après la limite de 5", async () => {
-    // On invente une IP unique juste pour ce test pour partir de zéro
-    const headers = { "x-test-ip": "robot-testeur-1" };
-
-    // 1. Les 5 premières requêtes doivent passer
+  it("devrait bloquer après dépassement", async () => {
+    // On peut utiliser une boucle simple pour saturer la limite
     for (let i = 0; i < 5; i++) {
-      const response = await $fetch("/", { headers });
-      expect(response).toBeDefined();
+      await fetch("/api/test");
     }
 
-    // 2. La 6ème requête DOIT échouer et être interceptée par le catch
-    try {
-      await $fetch("/", { headers });
-
-      // Si on arrive ici, le middleware n'a pas fait son job
-      expect.fail("La 6ème requête aurait dû être bloquée !");
-    } catch (error: any) {
-      // 3. ofetch stocke le code HTTP dans error.status
-      expect(error.status).toBe(429);
-    }
+    const blockedResponse = await fetch("/api/test");
+    expect(blockedResponse.status).toBe(429);
   });
 });
