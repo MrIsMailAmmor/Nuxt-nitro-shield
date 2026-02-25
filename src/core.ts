@@ -1,5 +1,6 @@
 // src/core.ts
 
+
 export interface RateLimitOptions {
   maxRequests: number;
   timeWindow: number; // en ms
@@ -40,8 +41,19 @@ export async function checkRateLimit(
   const data = (await getItem(key)) as {
     count: number;
     startTime: number;
+    resetTime: number;
   } | null;
 
+  console.warn("🛡️ Rate Limit Data", data);
+  if (data && data.count > options.maxRequests) {
+    console.warn("🛡️ Rate Limit Data expired", data);
+    return {
+      currentCount: data.count,
+      remaining: options.maxRequests,
+      resetTime: Math.ceil((data.resetTime + options.timeWindow - now) / 1000),
+      isBlocked: true,
+    };
+  }
   let currentCount = 0;
   let startTime = now;
 
@@ -66,4 +78,19 @@ export async function checkRateLimit(
     resetTime: Math.max(0, resetTime),
     isBlocked: currentCount > options.maxRequests,
   };
+}
+
+/**
+ * Instantly bans an IP by setting a very long reset time.
+ */
+export async function banIP(
+  storage: { setItem: (key: string, val: any) => Promise<void> },
+  ip: string,
+  durationMs: number = 86400000, // Default 24 hours
+): Promise<void> {
+  const key = `rate-limit:${ip}`;
+  await storage.setItem(key, {
+    count: 999999, // Way above any limit
+    resetTime: Date.now() + durationMs,
+  });
 }

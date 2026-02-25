@@ -27,6 +27,11 @@ export interface ModuleOptions {
    * @default true
    */
   verbose: boolean; // 👈 New option to toggle logs: string[];
+  /**
+   * Liste des endpoints "honeypots" à surveiller pour détecter les bots malveillants
+   * @default []
+   */
+  honeypots?: string[]; // 🆕 Option pour définir des endpoints pièges
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -40,6 +45,7 @@ export default defineNuxtModule<ModuleOptions>({
     timeWindow: 60000,
     whitelist: [],
     verbose: true, // 🆕 Logs activés par défaut
+    honeypots: ["/admin.php", "/wp-login.php", "/.env", "/backup.sql"],
   },
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);

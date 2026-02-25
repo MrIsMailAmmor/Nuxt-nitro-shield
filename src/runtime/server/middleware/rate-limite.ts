@@ -7,25 +7,47 @@ import {
 } from "h3";
 // @ts-expect-error
 import { useStorage, useRuntimeConfig } from "#imports";
-import { checkRateLimit } from "../../../core"; // Import relatif local (toujours vert ✅)
+import { banIP, checkRateLimit } from "../../../core"; // Import relatif local (toujours vert ✅)
 import { consola } from "consola"; // Nuxt's beautiful logger
+
+const logger = consola.withTag("nuxt-nitro-shield");
+const config = useRuntimeConfig().rateLimit;
 
 export default defineEventHandler(async (event) => {
   const url = event.path || "";
+  const ip =
+    getHeader(event, "x-test-ip") || getRequestIP(event) || "ip-locale";
+  const storage = useStorage();
+
+  // 1. 🪤 HONEYPOT CHECK
+  // If the path is in the honeypot list, ban the IP instantly
+  const isTrap = config.honeypots.some((trap: string) => url.includes(trap));
+  if (isTrap) {
+    if (config.verbose) {
+      logger.error(
+        `[HONEYPOT] 🪤 Trap triggered by ${ip} on ${url}. Banning for 24h.`,
+      );
+    }
+
+    // Ban for 24 hours
+    await banIP({ setItem: (key, val) => storage.setItem(key, val) }, ip);
+
+    throw createError({
+      statusCode: 418, // "I'm a teapot" - fun way to tell bots they are caught
+      statusMessage: "Not Interested",
+      data: { message: "Your IP has been flagged for malicious activity." },
+    });
+  }
 
   if (url.startsWith("/_nuxt") || url.includes("favicon.ico")) return;
 
   if (!url.startsWith("/api/")) return;
 
   // 1. Récupération de la config Nuxt
-  const config = useRuntimeConfig().rateLimit;
   const maxRequests = config?.maxRequests || 5;
   const timeWindow = config?.timeWindow || 60000;
 
   // 2. Préparation du stockage Nitro
-  const storage = useStorage();
-  const ip =
-    getHeader(event, "x-test-ip") || getRequestIP(event) || "ip-locale";
 
   // 3. Appel du cerveau universel
   // Note comment on passe juste les fonctions .getItem et .setItem
@@ -35,7 +57,7 @@ export default defineEventHandler(async (event) => {
     ip,
     { maxRequests, timeWindow, whitelist: config?.whitelist || [] },
   );
-
+  logger.warn("🛡️ Rate Limit Result", result);
   // 4. On communique les résultats via les headers
   setHeaders(event, {
     "X-RateLimit-Limit": maxRequests.toString(),
@@ -45,21 +67,16 @@ export default defineEventHandler(async (event) => {
 
   // 5. Blocage si nécessaire
   if (result.isBlocked) {
-    // 🛡️ Logging Logic
-    if (config.verbose) {
-      console.log(config.verbose);
-
-      consola.warn(`[SHIELD] 🛑 Blocked IP: ${ip} on ${url}`);
-      consola.info(
-        `[SHIELD] ⏳ Reset scheduled at: ${new Date(result.resetTime).toLocaleString()}`,
-      );
-    }
+    // If the count is huge, it means they hit a honeypot or were manually banned
+    const isPermanentBan = result.currentCount > 1000;
 
     throw createError({
       statusCode: 429,
-      statusMessage: "Too Many Requests",
+      statusMessage: isPermanentBan ? "Banned" : "Too Many Requests",
       data: {
-        ip,
+        message: isPermanentBan
+          ? "Your IP has been permanently flagged for suspicious activity."
+          : "Too many requests, please slow down.",
         resetAt: new Date(result.resetTime).toISOString(),
       },
     });
