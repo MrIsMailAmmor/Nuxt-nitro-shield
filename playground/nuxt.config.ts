@@ -12,6 +12,7 @@ export default defineNuxtConfig({
       maxRequests: 5, // Limite par défaut
       timeWindow: 60 * 1000, // 1 minute par défaut (en millisecondes)
       whitelist: ["127.0.0.2", "::1", "8.8.8.8"],
+      verbose: true,
     },
   },
 });
