@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const url = event.path || "";
   const ip =
     getHeader(event, "x-test-ip") || getRequestIP(event) || "ip-locale";
-  const storage = useStorage();
+  const storage = useStorage("shield");
 
   // 1. 🪤 HONEYPOT CHECK
   // If the path is in the honeypot list, ban the IP instantly
@@ -39,7 +39,12 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  if (url.startsWith("/_nuxt") || url.includes("favicon.ico")) return;
+  if (
+    url.startsWith("/_nuxt") ||
+    url.includes("favicon.ico") ||
+    url.includes("/api/shield/status")
+  )
+    return;
 
   if (!url.startsWith("/api/")) return;
 

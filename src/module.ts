@@ -32,6 +32,14 @@ export interface ModuleOptions {
    * @default []
    */
   honeypots?: string[]; // 🆕 Option pour définir des endpoints pièges
+  /**
+   * Page de statut pour afficher les statistiques de l'application
+   * @default true
+   */
+  statusPage?: {
+    enabled: boolean;
+    token: string;
+  };
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -46,6 +54,10 @@ export default defineNuxtModule<ModuleOptions>({
     whitelist: [],
     verbose: true, // 🆕 Logs activés par défaut
     honeypots: ["/admin.php", "/wp-login.php", "/.env", "/backup.sql"],
+    statusPage: {
+      enabled: true,
+      token: "123456789", // À changer impérativement en prod
+    },
   },
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
@@ -58,6 +70,13 @@ export default defineNuxtModule<ModuleOptions>({
       handler: handlerPath,
     });
 
+    // 2. La Route de Statut (Nouveau !)
+    if (options.statusPage?.enabled) {
+      addServerHandler({
+        route: "/api/shield/status",
+        handler: resolve("./runtime/server/api/shield-status.get"),
+      });
+    }
     logger.info("🛡️ Nitro Shield : Ready and Typed !");
   },
 });

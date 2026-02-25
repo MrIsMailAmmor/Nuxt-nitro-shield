@@ -14,6 +14,10 @@ export default defineNuxtConfig({
       whitelist: ["127.0.0.2", "::1", "8.8.8.8"],
       verbose: true,
       honeypots: ["/secret-backdoor"],
+      statusPage: {
+        enabled: true,
+        token: "123456789",
+      },
     },
   },
 });
