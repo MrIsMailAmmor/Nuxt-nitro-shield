@@ -1,84 +1,109 @@
-<!--
-Get your module up and running quickly.
+# 🛡️ Nuxt Nitro Shield
 
-Find and replace all on all files (CMD+SHIFT+F):
-- Name: My Module
-- Package name: my-module
-- Description: My new Nuxt module
--->
+A lightweight, persistent, and "smart" rate-limiting module for Nuxt 3 and Nitro. Protect your API routes from bots and brute-force attacks with built-in Honeypot support.
 
-# My Module
+Features
+🚀 Fast & Lightweight: Minimal overhead on your Nitro server.
 
-[![npm version][npm-version-src]][npm-version-href]
-[![npm downloads][npm-downloads-src]][npm-downloads-href]
-[![License][license-src]][license-href]
-[![Nuxt][nuxt-src]][nuxt-href]
+💾 Persistent: Supports multiple storage drivers (FS, Redis, Memory) via Nitro Storage.
 
-My new Nuxt module for doing amazing things.
+🪤 Honeypot: Instantly ban bots trying to access sensitive "trap" routes (e.g., /.env, /admin.php).
 
-- [✨ &nbsp;Release Notes](/CHANGELOG.md)
-<!-- - [🏀 Online playground](https://stackblitz.com/github/your-org/my-module?file=playground%2Fapp.vue) -->
-<!-- - [📖 &nbsp;Documentation](https://example.com) -->
+⚪ IP Whitelisting: Grant unlimited access to trusted IPs.
 
-## Features
+📊 Status API: Secured dashboard to monitor blocked IPs in real-time.
 
-<!-- Highlight some of the features your module provide here -->
-- ⛰ &nbsp;Foo
-- 🚠 &nbsp;Bar
-- 🌲 &nbsp;Baz
+📝 Pro Logging: Clear, scoped logs using consola.
 
-## Quick Setup
 
-Install the module to your Nuxt application with one command:
 
-```bash
-npx nuxt module add my-module
+# Quick Setup
+Installation (Internal use for now):
+Add the module to your nuxt.config.ts:
+```
+TypeScript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['./modules/nuxt-nitro-shield/src/module'],
+
+  rateLimit: {
+    maxRequests: 10,
+    timeWindow: 60000, // 1 minute
+    whitelist: ['127.0.0.1'],
+    honeypots: ['/admin.php', '/.env', '/wp-login.php'],
+    statusPage: {
+      enabled: true,
+      token: 'your-secure-token'
+    }
+  },
+
+  // Persistence configuration
+  nitro: {
+    storage: {
+      shield: {
+        driver: 'fs',
+        base: './.data/shield'
+      }
+    }
+  }
+})
 ```
 
-That's it! You can now use My Module in your Nuxt app ✨
+
+## Configuration Options
+
+| Option       | Type      | Default                                   | Description |
+|-------------|-----------|-------------------------------------------|-------------|
+| `maxRequests` | number    | `5`                                       | Maximum number of requests allowed within the time window. |
+| `timeWindow`  | number    | `60000`                                   | Time window in milliseconds. |
+| `whitelist`   | string[]  | `[]`                                      | List of IP addresses that bypass the rate limiter. |
+| `honeypots`   | string[]  | `['/admin.php', '/wp-login.php']`         | Routes that trigger an immediate 24-hour ban when accessed. |
+| `verbose`     | boolean   | `true`                                    | Enable or disable console logging for monitoring and debugging. |
+| `statusPage`  | object    | `{ enabled: true, token: 'your-token' }`  | Enables a secure endpoint to check current blocked IPs. |
 
 
-## Contribution
+## 📊 Monitoring
 
-<details>
-  <summary>Local development</summary>
-  
-  ```bash
-  # Install dependencies
-  npm install
-  
-  # Generate type stubs
-  npm run dev:prepare
-  
-  # Develop with the playground
-  npm run dev
-  
-  # Build the playground
-  npm run dev:build
-  
-  # Run ESLint
-  npm run lint
-  
-  # Run Vitest
-  npm run test
-  npm run test:watch
-  
-  # Release new version
-  npm run release
-  ```
-
-</details>
+Access the security status endpoint:
 
 
-<!-- Badges -->
-[npm-version-src]: https://img.shields.io/npm/v/my-module/latest.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-version-href]: https://npmjs.com/package/my-module
+GET ```/api/shield/status?token=your-secure-token```
 
-[npm-downloads-src]: https://img.shields.io/npm/dm/my-module.svg?style=flat&colorA=020420&colorB=00DC82
-[npm-downloads-href]: https://npm.chart.dev/my-module
 
-[license-src]: https://img.shields.io/npm/l/my-module.svg?style=flat&colorA=020420&colorB=00DC82
-[license-href]: https://npmjs.com/package/my-module
+This endpoint allows you to check:
+- Currently blocked IPs
+- Active rate limit data
+- Shield activity (if enabled)
 
-[nuxt-src]: https://img.shields.io/badge/Nuxt-020420?logo=nuxt
-[nuxt-href]: https://nuxt.com
+Make sure to keep your token secure.
+
+---
+
+## 📦 Package Configuration
+
+To make the module ready for installation via `npm install`, ensure your root `package.json` is configured as follows:
+
+```json
+{
+  "name": "nuxt-nitro-shield",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/module.ts"
+  },
+  "dependencies": {
+    "@nuxt/kit": "^3.0.0",
+    "consola": "^3.0.0"
+  }
+}
+
+```
+
+This configuration ensures:
+
+- ESM support (type: module)
+
+- Proper entry point export for Nuxt
+
+- Required runtime dependencies
+
