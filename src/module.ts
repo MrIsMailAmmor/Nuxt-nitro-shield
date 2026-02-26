@@ -3,6 +3,7 @@ import {
   addServerHandler,
   createResolver,
   useLogger,
+  addServerPlugin,
 } from "@nuxt/kit";
 
 // 1. On définit l'interface de tes options
@@ -69,7 +70,7 @@ export default defineNuxtModule<ModuleOptions>({
       middleware: true,
       handler: handlerPath,
     });
-
+    addServerPlugin(resolve("./runtime/server/plugins/cleanup"));
     // 2. La Route de Statut (Nouveau !)
     if (options.statusPage?.enabled) {
       addServerHandler({

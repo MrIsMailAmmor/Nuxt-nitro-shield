@@ -1,6 +1,5 @@
 // src/core.ts
 
-
 export interface RateLimitOptions {
   maxRequests: number;
   timeWindow: number; // en ms
@@ -50,7 +49,7 @@ export async function checkRateLimit(
     return {
       currentCount: data.count,
       remaining: options.maxRequests,
-      resetTime: Math.ceil((data.resetTime + options.timeWindow - now) / 1000),
+      resetTime: Math.ceil((now + options.timeWindow - now) / 1000),
       isBlocked: true,
     };
   }
