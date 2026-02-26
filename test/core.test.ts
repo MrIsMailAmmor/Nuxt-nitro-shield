@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { checkRateLimit } from "../src/core";
+import { describe, it, expect, beforeEach } from "vitest";
+import { checkRateLimit, cleanupExpiredFiles } from "../src/core";
 import { cleanIpCache } from "./testUtils/utils";
 
 describe("Rate Limit Core Logic", () => {
@@ -46,5 +46,30 @@ describe("Rate Limit Core Logic", () => {
     const result = await checkRateLimit(getItem, setItem, "127.0.0.1", options);
     expect(result.currentCount).toBe(1); // Compteur repart à 1
     expect(result.isBlocked).toBe(false);
+  });
+
+  it("should remove expired records and keep active ones", async () => {
+    const now = Date.now();
+
+    // Simuler un stockage avec une entrée expirée et une active
+    const mockDb = new Map();
+    mockDb.set("rate-limit:expired", { count: 10, resetTime: now - 1000 }); // Expire il y a 1s
+    mockDb.set("rate-limit:active", { count: 1, resetTime: now + 10000 }); // Expire dans 10s
+
+    const storageInterface = {
+      getKeys: async () => Array.from(mockDb.keys()),
+      getItem: async (key: string) => mockDb.get(key),
+      removeItem: async (key: string) => {
+        mockDb.delete(key);
+      },
+    };
+
+    // Exécuter le nettoyage
+    const result = await cleanupExpiredFiles(storageInterface);
+
+    // ✅ Vérifications
+    expect(result.cleaned).toBe(1);
+    expect(mockDb.has("rate-limit:expired")).toBe(false);
+    expect(mockDb.has("rate-limit:active")).toBe(true);
   });
 });
