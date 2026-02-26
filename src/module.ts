@@ -50,6 +50,12 @@ export interface ModuleOptions {
     max: number;
   }[];
 }
+declare module "@nuxt/schema" {
+  interface RuntimeConfig {
+    // Si tes options sont côté serveur (privé)
+    rateLimit: ModuleOptions;
+  }
+}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {

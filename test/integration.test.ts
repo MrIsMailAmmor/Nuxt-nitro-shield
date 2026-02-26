@@ -1,0 +1,48 @@
+// test/integration.test.ts
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { setup, fetch } from "@nuxt/test-utils";
+import { resolve } from "node:path";
+import { cleanIpCache } from "./testUtils/utils";
+import { config } from "./testUtils/config";
+describe("Shield Intelligent Routing", async () => {
+  // We setup the Nuxt environment with our specific config
+  await setup({
+    server: true,
+    rootDir: resolve(__dirname, "../playground"),
+    nuxtConfig: {
+      runtimeConfig: {
+        rateLimit: {
+          ...config,
+          sensitiveRoutes: [{ path: "/api/sensitive", max: 2 }],
+        },
+      },
+    },
+  });
+  beforeEach(() => cleanIpCache());
+  it("should allow more requests on global routes than sensitive ones", async () => {
+    // 1. Test the sensitive route (Limit: 2)
+    const res1 = await fetch("/api/sensitive");
+    const res2 = await fetch("/api/sensitive");
+    const res3 = await fetch("/api/sensitive");
+
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(res3.status).toBe(429); // 🛑 Third request must be blocked
+
+    const data = await res3.json();
+    expect(data.message).toContain("Too Many Requests");
+  });
+
+  it("should still allow access to global routes even if sensitive limit is hit", async () => {
+    // Context: The IP has already made 3 requests total in the previous test.
+    // Since the global limit is 10, /api/global should still work.
+
+    const resGlobal = await fetch("/api/global-test");
+
+    // ✅ Should be 200 because 3 requests < 10 global limit
+    expect(resGlobal.status).toBe(200);
+
+    // Check headers to see if the global limit is being used
+    expect(resGlobal.headers.get("X-RateLimit-Limit")).toBe("10");
+  });
+});

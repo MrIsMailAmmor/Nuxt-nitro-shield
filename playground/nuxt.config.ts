@@ -27,10 +27,7 @@ export default defineNuxtConfig({
         enabled: true,
         token: "123456789",
       },
-      sensitiveRoutes: [
-        { path: "/api/auth", max: 10 }, // Strict pour la sécurité
-        { path: "/api/checkout", max: 10 },
-      ],
+      sensitiveRoutes: [],
     },
   },
 });
