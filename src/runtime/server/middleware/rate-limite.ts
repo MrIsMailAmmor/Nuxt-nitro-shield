@@ -98,28 +98,3 @@ export default defineEventHandler(async (event) => {
     });
   }
 });
-
-/**
- * Identifies expired keys and removes them from storage.
- * Agnostic logic: works with any storage interface.
- */
-export async function cleanupExpiredFiles(storage: {
-  getKeys: () => Promise<string[]>;
-  getItem: (key: string) => Promise<any>;
-  removeItem: (key: string) => Promise<void>;
-}): Promise<{ cleaned: number }> {
-  const keys = await storage.getKeys();
-  const now = Date.now();
-  let cleaned = 0;
-
-  for (const key of keys) {
-    const data = await storage.getItem(key);
-    // If the record exists and resetTime is in the past, delete it
-    if (data && data.resetTime && now > data.resetTime) {
-      await storage.removeItem(key);
-      cleaned++;
-    }
-  }
-
-  return { cleaned };
-}

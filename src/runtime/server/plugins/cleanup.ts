@@ -3,7 +3,7 @@ import { defineNitroPlugin } from "nitropack/runtime/plugin";
 // @ts-expect-error
 import { useStorage, useRuntimeConfig } from "#imports";
 import { consola } from "consola";
-import { cleanupExpiredFiles } from "../middleware/rate-limite";
+import { cleanupExpiredFiles } from "../../../core";
 
 export default defineNitroPlugin((nitroApp) => {
   const config = useRuntimeConfig().rateLimit;
