@@ -16,11 +16,12 @@ describe("Shield Intelligent Routing", async () => {
           ...config,
           sensitiveRoutes: [{ path: "/api/sensitive", max: 2 }],
           honeypots: ["/admin.php"],
+          maxRequests: 10,
         },
       },
     },
   });
-  beforeEach(() => cleanIpCache());
+  beforeEach(async () => await cleanIpCache());
   it("should allow more requests on global routes than sensitive ones", async () => {
     // 1. Test the sensitive route (Limit: 2)
     const res1 = await fetch("/api/sensitive");

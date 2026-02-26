@@ -20,7 +20,7 @@ export interface RateLimitResult {
  */
 export async function checkRateLimit(
   getItem: (key: string) => Promise<any>,
-  setItem: (key: string, value: any) => Promise<void>,
+  setItem: (key: string, val: any, opts?: { ttl?: number }) => Promise<void>,
   ip: string,
   options: RateLimitOptions,
 ): Promise<RateLimitResult> {
@@ -64,7 +64,7 @@ export async function checkRateLimit(
     currentCount = 1;
     startTime = now;
   }
-
+  const ttlInSeconds = Math.ceil((startTime + options.timeWindow - now) / 1000);
   // On sauvegarde l'état
   await setItem(key, {
     ip,
@@ -72,6 +72,7 @@ export async function checkRateLimit(
     startTime,
     isBanned: false,
     resetTime: startTime + options.timeWindow,
+    ttl: ttlInSeconds,
   });
 
   const remaining = Math.max(0, options.maxRequests - currentCount);

@@ -4,9 +4,9 @@ export default defineNuxtConfig({
   nitro: {
     storage: {
       shield: {
-        // Doit correspondre exactement au nom dans useStorage('shield')
-        driver: "fs",
-        base: "./.data/shield", // Le point au début signifie "racine du playground"
+        driver: "redis",
+        host: "127.0.0.1",
+        port: 6379,
       },
     },
   },
@@ -18,11 +18,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Tout ce qui est défini directement ici est PRIVÉ (accessible uniquement côté serveur)
     rateLimit: {
-      maxRequests: 50, // Limite par défaut
+      maxRequests: 5, // Limite par défaut
       timeWindow: 10 * 1000, // 1 minute par défaut (en millisecondes)
       whitelist: ["127.0.0.2", "::1", "8.8.8.8"],
       verbose: true,
-      honeypots: ["/secret-backdoor"],
+      honeypots: ["/secret-backdoor", "/admin.php"],
       statusPage: {
         enabled: true,
         token: "123456789",

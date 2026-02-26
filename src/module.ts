@@ -12,22 +12,22 @@ export interface ModuleOptions {
    * Nombre maximum de requêtes autorisées
    * @default 5
    */
-  maxRequests: number;
+  maxRequests?: number;
   /**
    * Fenêtre de temps en millisecondes
    * @default 60000
    */
-  timeWindow: number;
+  timeWindow?: number;
   /**
    * Liste des adresses IP qui ne seront jamais bloquées
    * @default []
    */
-  whitelist: string[];
+  whitelist?: string[];
   /**
    * Affiche des logs détaillés dans la console pour le développement
    * @default true
    */
-  verbose: boolean; // 👈 New option to toggle logs: string[];
+  verbose?: boolean; // 👈 New option to toggle logs: string[];
   /**
    * Liste des endpoints "honeypots" à surveiller pour détecter les bots malveillants
    * @default []
@@ -88,13 +88,29 @@ export default defineNuxtModule<ModuleOptions>({
       middleware: true,
       handler: handlerPath,
     });
+
     addServerPlugin(resolve("./runtime/server/plugins/cleanup"));
+
     // 2. La Route de Statut (Nouveau !)
     if (options.statusPage?.enabled) {
       addServerHandler({
         route: "/api/shield/status",
+        method: "get",
         handler: resolve("./runtime/server/api/shield-status.get"),
       });
+    }
+    if (options.statusPage?.enabled) {
+      // 🕵️ Ajoute ce log
+      console.log("🚀 [SHIELD] Registering Status API Routes...");
+
+      addServerHandler({
+        route: "/api/shield/status",
+        method: "delete",
+        handler: resolve("./runtime/server/api/shield-status.delete"),
+      });
+    } else {
+      // 🕵️ Et celui-ci
+      console.log("⚠️ [SHIELD] Status API is DISABLED in options");
     }
     logger.info("🛡️ Nitro Shield : Ready and Typed !");
   },
