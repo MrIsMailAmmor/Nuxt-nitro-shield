@@ -41,6 +41,14 @@ export interface ModuleOptions {
     enabled: boolean;
     token: string;
   };
+  /**
+   * Liste des routes sensibles à limiter
+   * @default []
+   */
+  sensitiveRoutes?: {
+    path: string;
+    max: number;
+  }[];
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -50,7 +58,7 @@ export default defineNuxtModule<ModuleOptions>({
   },
   // 2.  we define the default options for the module
   defaults: {
-    maxRequests: 5,
+    maxRequests: 50,
     timeWindow: 60000,
     whitelist: [],
     verbose: true, // 🆕 Logs activés par défaut
@@ -59,6 +67,10 @@ export default defineNuxtModule<ModuleOptions>({
       enabled: true,
       token: "123456789", // À changer impérativement en prod
     },
+    sensitiveRoutes: [
+      { path: "/api/auth", max: 5 }, // Strict pour la sécurité
+      { path: "/api/checkout", max: 10 },
+    ],
   },
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);

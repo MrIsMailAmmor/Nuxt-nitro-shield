@@ -42,15 +42,20 @@ export default defineEventHandler(async (event) => {
   if (
     url.startsWith("/_nuxt") ||
     url.includes("favicon.ico") ||
-    url.includes("/api/shield/status")
+    url.includes("/api/shield/status") ||
+    !url.startsWith("/api/")
   )
     return;
 
-  if (!url.startsWith("/api/")) return;
-
   // 1. Récupération de la config Nuxt
-  const maxRequests = config?.maxRequests || 5;
-  const timeWindow = config?.timeWindow || 60000;
+  const sensitiveMatch = config.sensitiveRoutes.find((r: any) =>
+    url.startsWith(r.path),
+  );
+  const rateLimitOptions = {
+    maxRequests: sensitiveMatch ? sensitiveMatch.max : config.maxRequests,
+    timeWindow: sensitiveMatch?.timeWindow || config.timeWindow,
+    whitelist: config.whitelist,
+  };
 
   // 2. Préparation du stockage Nitro
 
@@ -60,12 +65,18 @@ export default defineEventHandler(async (event) => {
     (key) => storage.getItem(key),
     (key, val: string) => storage.setItem(key, val),
     ip,
-    { maxRequests, timeWindow, whitelist: config?.whitelist || [] },
+    rateLimitOptions,
   );
+
+  if (result.isBlocked && sensitiveMatch && config.verbose) {
+    consola.warn(
+      `[SHIELD] 🔥 SENSITIVE ROUTE BLOCKED: ${ip} on ${url} (Limit: ${sensitiveMatch.max})`,
+    );
+  }
   logger.warn("🛡️ Rate Limit Result", result);
   // 4. On communique les résultats via les headers
   setHeaders(event, {
-    "X-RateLimit-Limit": maxRequests.toString(),
+    "X-RateLimit-Limit": rateLimitOptions.maxRequests.toString(),
     "X-RateLimit-Remaining": result.remaining.toString(),
     "X-RateLimit-Reset": result.resetTime.toString(),
   });

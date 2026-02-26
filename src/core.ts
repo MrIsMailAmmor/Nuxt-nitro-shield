@@ -66,7 +66,13 @@ export async function checkRateLimit(
   }
 
   // On sauvegarde l'état
-  await setItem(key, { count: currentCount, startTime });
+  await setItem(key, {
+    ip,
+    count: currentCount,
+    startTime,
+    isBanned: false,
+    resetTime: startTime + options.timeWindow,
+  });
 
   const remaining = Math.max(0, options.maxRequests - currentCount);
   const resetTime = Math.ceil((startTime + options.timeWindow - now) / 1000);

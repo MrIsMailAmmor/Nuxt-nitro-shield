@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     stats.push({
       ip,
       requests: data.count,
-      isBanned: data.count > 1000,
+      isBanned: data.isBanned,
       expiresAt: new Date(data.resetTime).toLocaleString(),
       timeLeft: Math.ceil((data.resetTime - Date.now()) / 1000) + "s",
     });
