@@ -54,6 +54,7 @@ describe("Rate Limit Integration", async () => {
       });
 
       // Chaque requête doit être un succès (200)
+      console.log(`Requête ${i + 1} - Status: ${response}`);
       expect(response.status).toBe(200);
     }
 

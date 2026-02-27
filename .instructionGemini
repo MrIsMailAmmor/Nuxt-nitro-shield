@@ -1,0 +1,33 @@
+# Project Context: nuxt-nitro-shield
+
+## Overview
+`nuxt-nitro-shield` is a security-focused Nuxt module for the Nitro server engine. Its primary goal is to protect Nuxt applications from abuse through rate limiting and malicious bot detection.
+
+## Core Features
+- **Rate Limiting**: Prevents DoS and brute-force attacks by limiting requests per IP within a configurable time window.
+- **Sensitive Routes**: Allows stricter rate limits for critical endpoints (e.g., `/api/auth`).
+- **Honeypot Protection**: Automatically bans IPs that attempt to access "trap" URLs (e.g., `/.env`, `/wp-login.php`).
+- **IP Whitelisting**: Bypasses protection for trusted IP addresses.
+- **Auto-Cleanup**: A background Nitro plugin periodically removes expired rate-limit records to keep storage clean.
+- **Status API**: A protected endpoint (`/api/shield/status`) to monitor tracked IPs and blocked offenders.
+
+## Technical Architecture
+- **Module Entry (`src/module.ts`)**: Configures the module, defines default options, and registers server handlers/plugins.
+- **Core Logic (`src/core.ts`)**: Contains storage-agnostic functions for checking limits, banning IPs, and cleaning up records.
+- **Server Middleware (`src/runtime/server/middleware/rate-limite.ts`)**: The "brain" that intercepts requests, checks honeypots, and enforces rate limits.
+- **Cleanup Plugin (`src/runtime/server/plugins/cleanup.ts`)**: A Nitro plugin that runs a `setInterval` for maintenance.
+- **Status API (`src/runtime/server/api/shield-status.get.ts`)**: An H3 event handler that returns JSON stats of current activity.
+
+## Key Configurations (ModuleOptions)
+- `enabled`: Toggles the module on/off.
+- `defaultLimit`: Default rate limit settings.
+- `whitelist`: Array of IPs to ignore.
+- `honeypots`: Array of URL patterns to trigger instant bans.
+- `sensitiveRoutes`: Route-specific limits.
+- `statusPage`: Toggle and token for the monitoring API.
+
+## Project Conventions
+- **Naming**: The project uses `camelCase` for variables and `kebab-case` for files (note: `rate-limite.ts` contains a likely typo "limite").
+- **Logging**: Uses `consola` with the tag `nuxt-nitro-shield`.
+- **Storage**: Uses Nitro's `useStorage('shield')` for persistence.
+- **Error Handling**: Uses `h3`'s `createError` with specific status codes (429 for rate limit, 418 for honeypot traps, 403 for unauthorized status access).

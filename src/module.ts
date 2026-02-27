@@ -138,7 +138,22 @@ export default defineNuxtModule<ModuleOptions>({
         );
       }
     }
-
+    // GET: View stats and blocked IPs
+    addServerHandler({
+      route: "/api/auth",
+      method: "get",
+      handler: resolve("./runtime/server/api/auth.get"),
+    });
+    addServerHandler({
+      route: "/api/test",
+      method: "get",
+      handler: resolve("./runtime/server/api/test.get"),
+    });
+    addServerHandler({
+      route: "/api/admin.php",
+      method: "get",
+      handler: resolve("./runtime/server/api/admin.php.get"),
+    });
     // Register Status & Admin API Routes if enabled
     if (options.statusPage?.enabled) {
       if (options.verbose) {

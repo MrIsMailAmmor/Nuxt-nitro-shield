@@ -27,8 +27,11 @@ export default defineNuxtConfig({
   modules: ['./modules/nuxt-nitro-shield/src/module'],
 
   rateLimit: {
-    maxRequests: 10,
-    timeWindow: 60000, // 1 minute
+    enabled: true,
+    defaultLimit: {
+      max: 10,
+      timeWindow: 60000, // 1 minute
+    },
     whitelist: ['127.0.0.1'],
     honeypots: ['/admin.php', '/.env', '/wp-login.php'],
     statusPage: {
@@ -52,10 +55,11 @@ export default defineNuxtConfig({
 
 ## Configuration Options
 
-| Option       | Type      | Default                                   | Description |
-|-------------|-----------|-------------------------------------------|-------------|
-| `maxRequests` | number    | `5`                                       | Maximum number of requests allowed within the time window. |
-| `timeWindow`  | number    | `60000`                                   | Time window in milliseconds. |
+| Option      | Type     | Default                                    | Description |
+|-------------|-----------|-------------------------------------------  |-------------|
+| `enabled`   | boolean   | `true`                                     | Enable or disable the module.
+| `defaultLimit.max` | number    | `5`                                  | Maximum number of requests allowed within the time window.
+| `defaultLimit.timeWindow`  | number    | `60000`                      | Time window in milliseconds. 
 | `whitelist`   | string[]  | `[]`                                      | List of IP addresses that bypass the rate limiter. |
 | `honeypots`   | string[]  | `['/admin.php', '/wp-login.php']`         | Routes that trigger an immediate 24-hour ban when accessed. |
 | `verbose`     | boolean   | `true`                                    | Enable or disable console logging for monitoring and debugging. |

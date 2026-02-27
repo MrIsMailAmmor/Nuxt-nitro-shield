@@ -1,6 +1,6 @@
 // test/integration.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
-import { setup, fetch } from "@nuxt/test-utils";
+import { setup, $fetch } from "@nuxt/test-utils";
 import { resolve } from "node:path";
 import { cleanIpCache } from "./testUtils/utils";
 import { config } from "./testUtils/config";
@@ -14,7 +14,7 @@ describe("Shield Intelligent Routing", async () => {
       runtimeConfig: {
         rateLimit: {
           ...config,
-          sensitiveRoutes: [{ path: "/api/sensitive", max: 2 }],
+          sensitiveRoutes: [{ path: "/api/shield/status", max: 2 }],
           honeypots: ["/admin.php"],
           defaultLimit: {
             max: 10,
@@ -27,9 +27,9 @@ describe("Shield Intelligent Routing", async () => {
   beforeEach(async () => await cleanIpCache());
   it("should allow more requests on global routes than sensitive ones", async () => {
     // 1. Test the sensitive route (Limit: 2)
-    const res1 = await fetch("/api/sensitive");
-    const res2 = await fetch("/api/sensitive");
-    const res3 = await fetch("/api/sensitive");
+    const res1 = await fetch("/api/shield/status");
+    const res2 = await fetch("/api/shield/status");
+    const res3 = await fetch("/api/shield/status");
 
     expect(res1.status).toBe(200);
     expect(res2.status).toBe(200);
@@ -43,7 +43,7 @@ describe("Shield Intelligent Routing", async () => {
     // Context: The IP has already made 3 requests total in the previous test.
     // Since the global limit is 10, /api/global should still work.
 
-    const resGlobal = await fetch("/api/global-test");
+    const resGlobal = await fetch("/api/test");
 
     // ✅ Should be 200 because 3 requests < 10 global limit
     expect(resGlobal.status).toBe(200);
