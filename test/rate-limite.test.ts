@@ -13,7 +13,10 @@ describe("Rate Limit Integration", async () => {
       runtimeConfig: {
         rateLimit: {
           ...config,
-          maxRequests: 5,
+          defaultLimit: {
+            max: 5,
+            timeWindow: 60000, // 1 minute en millisecondes
+          },
         },
       },
     },

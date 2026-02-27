@@ -1,13 +1,33 @@
 export default defineNuxtConfig({
+  nitro: {
+    storage: {
+      shield: {
+        driver: "redis",
+        host: "127.0.0.1",
+        port: 6379,
+      },
+    },
+  },
   modules: ["my-module", "@nuxtjs/tailwindcss", "@nuxt/test-utils"],
   devtools: { enabled: true },
   compatibilityDate: "latest",
   runtimeConfig: {
     // Tout ce qui est défini directement ici est PRIVÉ (accessible uniquement côté serveur)
     rateLimit: {
-      maxRequests: 5, // Limite par défaut
-      timeWindow: 60 * 1000, // 1 minute par défaut (en millisecondes)
+      enabled: true,
+      defaultLimit: {
+        max: 5, // Limite par défaut
+        timeWindow: 60000, // 1 minute par défaut (en millisecondes)
+      },
       whitelist: ["127.0.0.1", "::1", "8.8.8.8"],
+      excludedRoutes: ["/_nuxt/**", "/favicon.ico"],
+      verbose: true,
+      honeypots: ["/admin.php", "/wp-login.php", "/.env", "/backup.sql"],
+      statusPage: {
+        enabled: true,
+        token: "123456789",
+      },
+      sensitiveRoutes: [],
     },
   },
 });

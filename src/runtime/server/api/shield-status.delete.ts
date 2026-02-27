@@ -8,7 +8,6 @@ export default defineEventHandler(async (event) => {
   const storage = useStorage("shield");
 
   // 1. 🛡️ Toujours vérifier le token
-  console.log(query.token, config.statusPage.token);
   if (query.token !== config.statusPage?.token) {
     throw createError({
       statusCode: 403,
@@ -37,6 +36,5 @@ export default defineEventHandler(async (event) => {
     });
 
   await storage.removeItem(`rate-limit:${ip}`);
-  console.log("--- DELETE HIT! ---");
   return { status: "success", message: `IP ${ip} unshielded.` };
 });

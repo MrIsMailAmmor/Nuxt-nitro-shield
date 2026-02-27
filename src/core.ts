@@ -1,8 +1,10 @@
 // src/core.ts
 
 export interface RateLimitOptions {
-  maxRequests: number;
-  timeWindow: number; // en ms
+  defaultLimit: {
+    max: number;
+    timeWindow: number;
+  };
   whitelist?: string[];
 }
 
@@ -30,7 +32,7 @@ export async function checkRateLimit(
   if (options.whitelist && options.whitelist.includes(ip)) {
     return {
       currentCount: 0,
-      remaining: options.maxRequests,
+      remaining: options.defaultLimit.max,
       resetTime: 0,
       isBlocked: false,
     };
@@ -43,11 +45,13 @@ export async function checkRateLimit(
     resetTime: number;
   } | null;
 
-  if (data && data.count > options.maxRequests) {
+  if (data && data.count > options.defaultLimit.max) {
     return {
       currentCount: data.count,
-      remaining: options.maxRequests,
-      resetTime: Math.ceil((now + options.timeWindow - now) / 1000),
+      remaining: options.defaultLimit.max,
+      resetTime: Math.ceil(
+        (now + options.defaultLimit.timeWindow - now) / 1000,
+      ),
       isBlocked: true,
     };
   }
@@ -55,32 +59,35 @@ export async function checkRateLimit(
   let startTime = now;
 
   // Algorithme de fenêtre glissante simplifiée
-  if (data && now - data.startTime < options.timeWindow) {
+  if (data && now - data.startTime < options.defaultLimit.timeWindow) {
     currentCount = data.count + 1;
     startTime = data.startTime;
   } else {
     currentCount = 1;
     startTime = now;
   }
-  const ttlInSeconds = Math.ceil((startTime + options.timeWindow - now) / 1000);
+  const ttlInSeconds = Math.ceil(
+    (startTime + options.defaultLimit.timeWindow - now) / 1000,
+  );
   // On sauvegarde l'état
   await setItem(key, {
     ip,
     count: currentCount,
     startTime,
     isBanned: false,
-    resetTime: startTime + options.timeWindow,
+    resetTime: startTime + options.defaultLimit.timeWindow,
     ttl: ttlInSeconds,
   });
 
-  const remaining = Math.max(0, options.maxRequests - currentCount);
-  const resetTime = Math.ceil((startTime + options.timeWindow - now) / 1000);
-
+  const remaining = Math.max(0, options.defaultLimit.max - currentCount);
+  const resetTime = Math.ceil(
+    (startTime + options.defaultLimit.timeWindow - now) / 1000,
+  );
   return {
     currentCount,
     remaining,
     resetTime: Math.max(0, resetTime),
-    isBlocked: currentCount > options.maxRequests,
+    isBlocked: currentCount > options.defaultLimit.max,
   };
 }
 

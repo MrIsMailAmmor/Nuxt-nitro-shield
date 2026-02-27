@@ -16,7 +16,10 @@ describe("Shield Intelligent Routing", async () => {
           ...config,
           sensitiveRoutes: [{ path: "/api/sensitive", max: 2 }],
           honeypots: ["/admin.php"],
-          maxRequests: 10,
+          defaultLimit: {
+            max: 10,
+            timeWindow: 60000,
+          },
         },
       },
     },

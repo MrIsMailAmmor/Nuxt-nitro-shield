@@ -52,8 +52,10 @@ export default defineEventHandler(async (event) => {
     url.startsWith(r.path),
   );
   const rateLimitOptions = {
-    maxRequests: sensitiveMatch ? sensitiveMatch.max : config.maxRequests,
-    timeWindow: sensitiveMatch?.timeWindow || config.timeWindow,
+    defaultLimit: {
+      max: sensitiveMatch ? sensitiveMatch.max : config.defaultLimit.max,
+      timeWindow: sensitiveMatch?.timeWindow || config.defaultLimit.timeWindow,
+    },
     whitelist: config.whitelist,
   };
 
@@ -76,7 +78,7 @@ export default defineEventHandler(async (event) => {
   logger.warn("🛡️ Rate Limit Result", result);
   // 4. On communique les résultats via les headers
   setHeaders(event, {
-    "X-RateLimit-Limit": rateLimitOptions.maxRequests.toString(),
+    "X-RateLimit-Limit": rateLimitOptions.defaultLimit.max.toString(),
     "X-RateLimit-Remaining": result.remaining.toString(),
     "X-RateLimit-Reset": result.resetTime.toString(),
   });

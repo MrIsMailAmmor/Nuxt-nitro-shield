@@ -8,8 +8,6 @@ export default defineEventHandler(async (event) => {
 
   // 🛡️ Vérification du Token
   if (query.token !== config.statusPage?.token) {
-    console.log(config.statusPage?.token);
-
     throw createError({
       statusCode: 403,
       message: "Forbidden: Invalid Shield Token",

@@ -1,6 +1,9 @@
 const config = {
-  maxRequests: 10,
-  timeWindow: 60 * 1000, // 1 minute
+  enabled: true,
+  defaultLimit: {
+    max: 10,
+    timeWindow: 60000,
+  },
   whitelist: [],
   verbose: true,
   honeypots: [],

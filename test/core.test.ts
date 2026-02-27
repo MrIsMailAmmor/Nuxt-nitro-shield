@@ -17,15 +17,17 @@ describe("Rate Limit Core Logic", () => {
 
   it("devrait autoriser la première requête", async () => {
     const result = await checkRateLimit(getItem, setItem, "127.0.0.1", {
-      maxRequests: 2,
-      timeWindow: 1000,
+      defaultLimit: {
+        max: 2,
+        timeWindow: 1000,
+      },
     });
     expect(result.currentCount).toBe(1);
     expect(result.isBlocked).toBe(false);
   });
 
   it("devrait bloquer après avoir dépassé la limite", async () => {
-    const options = { maxRequests: 1, timeWindow: 1000 };
+    const options = { defaultLimit: { max: 1, timeWindow: 1000 } };
 
     await checkRateLimit(getItem, setItem, "127.0.0.1", options); // Requête 1
     const result = await checkRateLimit(getItem, setItem, "127.0.0.1", options); // Requête 2
@@ -36,7 +38,7 @@ describe("Rate Limit Core Logic", () => {
   });
 
   it("devrait réinitialiser après le délai imparti", async () => {
-    const options = { maxRequests: 1, timeWindow: 10 }; // 10ms pour aller vite
+    const options = { defaultLimit: { max: 1, timeWindow: 10 } }; // 10ms pour aller vite
 
     await checkRateLimit(getItem, setItem, "127.0.0.1", options);
 

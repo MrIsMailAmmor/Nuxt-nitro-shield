@@ -18,8 +18,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Tout ce qui est défini directement ici est PRIVÉ (accessible uniquement côté serveur)
     rateLimit: {
-      maxRequests: 5, // Limite par défaut
-      timeWindow: 10 * 1000, // 1 minute par défaut (en millisecondes)
+      enabled: true,
+      defaultLimit: {
+        max: 5, // Limite par défaut
+        timeWindow: 60000, // 1 minute par défaut (en millisecondes)
+      },
       whitelist: ["127.0.0.2", "::1", "8.8.8.8"],
       verbose: true,
       honeypots: ["/secret-backdoor", "/admin.php"],

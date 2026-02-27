@@ -6,53 +6,70 @@ import {
   addServerPlugin,
 } from "@nuxt/kit";
 
-// 1. On définit l'interface de tes options
+/**
+ * Interface for the Nuxt Nitro Shield module options.
+ */
 export interface ModuleOptions {
   /**
-   * Nombre maximum de requêtes autorisées
-   * @default 5
+   * Activate or deactivate the module globally.
+   * @default true
    */
-  maxRequests?: number;
+  enabled: boolean;
+
   /**
-   * Fenêtre de temps en millisecondes
-   * @default 60000
+   * Default limit applied to routes not specified in sensitiveRoutes.
+   * @default { max: 50, timeWindow: 60000 }
    */
-  timeWindow?: number;
+  defaultLimit: {
+    max: number;
+    timeWindow: number;
+  };
+
   /**
-   * Liste des adresses IP qui ne seront jamais bloquées
+   * List of IP addresses that bypass all rate limiting.
    * @default []
    */
   whitelist?: string[];
+
   /**
-   * Affiche des logs détaillés dans la console pour le développement
-   * @default true
-   */
-  verbose?: boolean; // 👈 New option to toggle logs: string[];
-  /**
-   * Liste des endpoints "honeypots" à surveiller pour détecter les bots malveillants
+   * Route patterns to exclude from protection (e.g., /_nuxt/**, /images/**).
    * @default []
    */
-  honeypots?: string[]; // 🆕 Option pour définir des endpoints pièges
+  excludedRoutes?: string[];
+
   /**
-   * Page de statut pour afficher les statistiques de l'application
+   * If true, displays detailed logs in the server console.
    * @default true
    */
-  statusPage?: {
+  verbose?: boolean;
+
+  /**
+   * List of honeypot endpoints to trap malicious bots.
+   * Touching these leads to an immediate ban.
+   * @default ["/admin.php", "/wp-login.php", "/.env"]
+   */
+  honeypots?: string[];
+
+  /**
+   * Configuration for the administration status page.
+   */
+  statusPage: {
     enabled: boolean;
     token: string;
   };
+
   /**
-   * Liste des routes sensibles à limiter
-   * @default []
+   * Specific limits for high-risk routes (Auth, Checkout, etc.).
    */
   sensitiveRoutes?: {
     path: string;
     max: number;
+    window?: number;
   }[];
 }
+
 declare module "@nuxt/schema" {
   interface RuntimeConfig {
-    // Si tes options sont côté serveur (privé)
     rateLimit: ModuleOptions;
   }
 }
@@ -60,58 +77,91 @@ declare module "@nuxt/schema" {
 export default defineNuxtModule<ModuleOptions>({
   meta: {
     name: "nuxt-nitro-shield",
-    configKey: "rateLimit", // the key in nuxt.config where users can set options
+    configKey: "rateLimit",
   },
-  // 2.  we define the default options for the module
+  // Default values for the module options
   defaults: {
-    maxRequests: 50,
-    timeWindow: 60000,
+    enabled: true,
+    defaultLimit: {
+      max: 50,
+      timeWindow: 60000,
+    },
     whitelist: [],
-    verbose: true, // 🆕 Logs activés par défaut
+    excludedRoutes: ["/_nuxt/**", "/favicon.ico"],
+    verbose: true,
     honeypots: ["/admin.php", "/wp-login.php", "/.env", "/backup.sql"],
     statusPage: {
       enabled: true,
-      token: "123456789", // À changer impérativement en prod
+      token: "123456789", // MUST be changed in production
     },
     sensitiveRoutes: [
-      { path: "/api/auth", max: 5 }, // Strict pour la sécurité
+      { path: "/api/auth", max: 5 },
       { path: "/api/checkout", max: 10 },
     ],
   },
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
     const logger = useLogger("nuxt-nitro-shield");
-    // 3. we add a server middleware that will handle the rate limiting logic
-    const handlerPath = resolve("./runtime/server/middleware/rate-limite");
 
+    if (!options.enabled) {
+      logger.info("🛡️ Shield is disabled via configuration.");
+      return;
+    }
+
+    // Register the core rate-limiting middleware
     addServerHandler({
       middleware: true,
-      handler: handlerPath,
+      handler: resolve("./runtime/server/middleware/rate-limite"),
     });
+    const storageConfig = nuxt.options.nitro.storage?.["shield"];
+    const driverName = String(storageConfig?.driver || "");
 
-    addServerPlugin(resolve("./runtime/server/plugins/cleanup"));
+    // Redis et Cloudflare KV gèrent le TTL tout seuls, pas besoin de notre cleanup.ts
+    const hasNativeTTL = [
+      "redis",
+      "cloudflare-kv",
+      "cloudflareKV",
+      "ioredis",
+    ].includes(driverName);
 
-    // 2. La Route de Statut (Nouveau !)
+    if (!hasNativeTTL) {
+      if (options.verbose) {
+        logger.info(
+          "🧹 Storage driver lacks native TTL. Registering cleanup plugin...",
+        );
+      }
+      addServerPlugin(resolve("./runtime/server/plugins/cleanup"));
+    } else {
+      if (options.verbose) {
+        logger.info(
+          `🚀 Storage driver (${driverName}) handles TTL natively. Cleanup plugin skipped.`,
+        );
+      }
+    }
+
+    // Register Status & Admin API Routes if enabled
     if (options.statusPage?.enabled) {
+      if (options.verbose) {
+        logger.info("🚀 [SHIELD] Registering Status & Admin API Routes...");
+      }
+
+      // GET: View stats and blocked IPs
       addServerHandler({
         route: "/api/shield/status",
         method: "get",
         handler: resolve("./runtime/server/api/shield-status.get"),
       });
-    }
-    if (options.statusPage?.enabled) {
-      // 🕵️ Ajoute ce log
-      console.log("🚀 [SHIELD] Registering Status API Routes...");
 
+      // DELETE: Manually unblock an IP or clear storage
       addServerHandler({
         route: "/api/shield/status",
         method: "delete",
         handler: resolve("./runtime/server/api/shield-status.delete"),
       });
     } else {
-      // 🕵️ Et celui-ci
-      console.log("⚠️ [SHIELD] Status API is DISABLED in options");
+      logger.warn("⚠️ [SHIELD] Status API is disabled.");
     }
-    logger.info("🛡️ Nitro Shield : Ready and Typed !");
+
+    logger.success("🛡️ Nuxt Nitro Shield is ready!");
   },
 });
