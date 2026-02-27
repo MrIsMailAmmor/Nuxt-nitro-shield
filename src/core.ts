@@ -1,24 +1,34 @@
-// src/core.ts
-
 export interface RateLimitOptions {
   defaultLimit: {
     max: number;
     timeWindow: number;
   };
   whitelist?: string[];
+  keyPrefix?: string;
 }
 
 export interface RateLimitResult {
   currentCount: number;
   remaining: number;
-  resetTime: number; // en secondes
+  resetTime: number; // Timestamp in milliseconds
   isBlocked: boolean;
 }
 
 /**
- * Logique universelle de Rate Limit
- * @param getItem Fonction pour récupérer une donnée (ex: depuis Redis, Mémoire, etc.)
- * @param setItem Fonction pour sauvegarder une donnée
+ * Generates a standardized storage key.
+ */
+const generateKey = (prefix: string | undefined, ip: string): string =>
+  `${prefix || "rate-limit"}:${ip}`;
+
+/**
+ * Logic to determine if an IP should bypass the shield.
+ */
+const isWhitelisted = (ip: string, whitelist?: string[]): boolean =>
+  !!(whitelist && whitelist.includes(ip));
+
+/**
+ * Core Universal Rate Limiting Logic.
+ * Optimized for both File System and Redis TTL support.
  */
 export async function checkRateLimit(
   getItem: (key: string) => Promise<any>,
@@ -26,89 +36,79 @@ export async function checkRateLimit(
   ip: string,
   options: RateLimitOptions,
 ): Promise<RateLimitResult> {
-  const key = `rate-limit:${ip}`;
+  const key = generateKey(options.keyPrefix, ip);
   const now = Date.now();
-  // 🛡️ Logique de Whitelist
-  if (options.whitelist && options.whitelist.includes(ip)) {
-    return {
-      currentCount: 0,
-      remaining: options.defaultLimit.max,
-      resetTime: 0,
-      isBlocked: false,
-    };
+  const { max, timeWindow } = options.defaultLimit;
+
+  // 1. Whitelist Bypass
+  if (isWhitelisted(ip, options.whitelist)) {
+    return { currentCount: 0, remaining: max, resetTime: 0, isBlocked: false };
   }
 
-  // Récupération sécurisée des données
-  const data = (await getItem(key)) as {
-    count: number;
-    startTime: number;
-    resetTime: number;
-  } | null;
+  // 2. Retrieve existing state
+  const data = await getItem(key);
 
-  if (data && data.count > options.defaultLimit.max) {
-    return {
-      currentCount: data.count,
-      remaining: options.defaultLimit.max,
-      resetTime: Math.ceil(
-        (now + options.defaultLimit.timeWindow - now) / 1000,
-      ),
-      isBlocked: true,
-    };
-  }
-  let currentCount = 0;
-  let startTime = now;
+  // 3. Calculate New State (Fixed Window Algorithm)
+  let currentCount: number;
+  let startTime: number;
 
-  // Algorithme de fenêtre glissante simplifiée
-  if (data && now - data.startTime < options.defaultLimit.timeWindow) {
+  if (data && now - data.startTime < timeWindow) {
+    // Within the current window: increment
     currentCount = data.count + 1;
     startTime = data.startTime;
   } else {
+    // Window expired or no data: reset
     currentCount = 1;
     startTime = now;
   }
-  const ttlInSeconds = Math.ceil(
-    (startTime + options.defaultLimit.timeWindow - now) / 1000,
-  );
-  // On sauvegarde l'état
-  await setItem(key, {
-    ip,
-    count: currentCount,
-    startTime,
-    isBanned: false,
-    resetTime: startTime + options.defaultLimit.timeWindow,
-    ttl: ttlInSeconds,
-  });
 
-  const remaining = Math.max(0, options.defaultLimit.max - currentCount);
-  const resetTime = Math.ceil(
-    (startTime + options.defaultLimit.timeWindow - now) / 1000,
+  const resetTime = startTime + timeWindow;
+  const ttlInSeconds = Math.ceil((resetTime - now) / 1000);
+
+  // 4. Persistence
+  // We pass the TTL so drivers like Redis can handle auto-cleanup
+  await setItem(
+    key,
+    { ip, count: currentCount, startTime, resetTime },
+    { ttl: ttlInSeconds > 0 ? ttlInSeconds : 1 },
   );
+
   return {
     currentCount,
-    remaining,
-    resetTime: Math.max(0, resetTime),
-    isBlocked: currentCount > options.defaultLimit.max,
+    remaining: Math.max(0, max - currentCount),
+    resetTime,
+    isBlocked: currentCount > max,
   };
 }
 
 /**
- * Instantly bans an IP by setting a very long reset time.
+ * Instantly bans an IP by setting an astronomical count and long duration.
  */
 export async function banIP(
-  storage: { setItem: (key: string, val: any) => Promise<void> },
+  storage: {
+    setItem: (key: string, val: any, opts?: { ttl?: number }) => Promise<void>;
+  },
   ip: string,
-  durationMs: number = 86400000, // Default 24 hours
+  durationMs: number = 86400000, // Default: 24 hours
 ): Promise<void> {
   const key = `rate-limit:${ip}`;
-  await storage.setItem(key, {
-    count: 999999, // Way above any limit
-    resetTime: Date.now() + durationMs,
-  });
+  const ttlInSeconds = Math.ceil(durationMs / 1000);
+
+  await storage.setItem(
+    key,
+    {
+      count: 999999,
+      startTime: Date.now(),
+      resetTime: Date.now() + durationMs,
+      isBanned: true,
+    },
+    { ttl: ttlInSeconds },
+  );
 }
 
 /**
- * Identifies expired keys and removes them from storage.
- * Agnostic logic: works with any storage interface.
+ * Maintenance: Identifies and removes expired records.
+ * Only necessary for storage drivers that do not support native TTL (like FS).
  */
 export async function cleanupExpiredFiles(storage: {
   getKeys: () => Promise<string[]>;
@@ -121,8 +121,8 @@ export async function cleanupExpiredFiles(storage: {
 
   for (const key of keys) {
     const data = await storage.getItem(key);
-    // If the record exists and resetTime is in the past, delete it
-    if (data && data.resetTime && now > data.resetTime) {
+
+    if (data?.resetTime && now > data.resetTime) {
       await storage.removeItem(key);
       cleaned++;
     }

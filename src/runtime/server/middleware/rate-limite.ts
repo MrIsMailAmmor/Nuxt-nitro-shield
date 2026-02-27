@@ -4,97 +4,141 @@ import {
   getRequestIP,
   setHeaders,
   createError,
+  type H3Event,
 } from "h3";
-// @ts-expect-error
+// @ts-expect-error - Nitro auto-imports
 import { useStorage, useRuntimeConfig } from "#imports";
-import { banIP, checkRateLimit } from "../../../core"; // Import relatif local (toujours vert ✅)
-import { consola } from "consola"; // Nuxt's beautiful logger
+import { banIP, checkRateLimit } from "../../../core";
+import { consola } from "consola";
 
 const logger = consola.withTag("nuxt-nitro-shield");
-const config = useRuntimeConfig().rateLimit;
 
-export default defineEventHandler(async (event) => {
-  const url = event.path || "";
-  const ip =
-    getHeader(event, "x-test-ip") || getRequestIP(event) || "ip-locale";
+/**
+ * Checks if the current request path matches any honeypot trap.
+ */
+function isHoneypotTrigger(path: string, honeypots: string[]): boolean {
+  return honeypots.some((trap) => path.includes(trap));
+}
+
+/**
+ * Determines if the request should bypass the shield (static files, status page, etc.).
+ */
+function isExcludedRoute(path: string, excludedRoutes: string[]): boolean {
+  // Always exclude internal Nuxt paths and the status API itself
+  const internalExclusions = ["/_nuxt", "favicon.ico", "/api/shield/status"];
+  const isInternal = internalExclusions.some((excluded) =>
+    path.includes(excluded),
+  );
+
+  const isNotApi = !path.startsWith("/api/");
+  // Check against user-defined excluded routes
+  const isUserExcluded = excludedRoutes.some((pattern) => {
+    if (pattern.endsWith("/**")) {
+      return path.startsWith(pattern.replace("/**", ""));
+    }
+    return path === pattern;
+  });
+
+  return isInternal || isUserExcluded || isNotApi;
+}
+
+/**
+ * Resolves the correct rate limit configuration based on the path.
+ * Prioritizes sensitiveRoutes over defaultLimit.
+ */
+function resolveRouteConfig(path: string, config: any) {
+  const sensitiveMatch = config.sensitiveRoutes?.find((r: any) =>
+    path.startsWith(r.path),
+  );
+
+  return {
+    max: sensitiveMatch ? sensitiveMatch.max : config.defaultLimit.max,
+    timeWindow: sensitiveMatch?.window || config.defaultLimit.timeWindow,
+    isSensitive: !!sensitiveMatch,
+  };
+}
+
+/**
+ * Main Middleware Handler
+ */
+export default defineEventHandler(async (event: H3Event) => {
+  const config = useRuntimeConfig().rateLimit;
+  if (!config.enabled) return;
+
+  const path = event.path || "";
   const storage = useStorage("shield");
 
-  // 1. 🪤 HONEYPOT CHECK
-  // If the path is in the honeypot list, ban the IP instantly
-  const isTrap = config.honeypots.some((trap: string) => url.includes(trap));
-  if (isTrap) {
+  // 1. IP Identification (Support for tests, headers, and native IP)
+  const ip =
+    getHeader(event, "x-test-ip") || getRequestIP(event) || "127.0.0.1";
+
+  // 2. Honeypot Protection (Immediate Ban)
+  if (isHoneypotTrigger(path, config.honeypots)) {
     if (config.verbose) {
       logger.error(
-        `[HONEYPOT] 🪤 Trap triggered by ${ip} on ${url}. Banning for 24h.`,
+        `[HONEYPOT] 🪤 Trap triggered by ${ip} on ${path}. Banning IP.`,
       );
     }
 
-    // Ban for 24 hours
     await banIP({ setItem: (key, val) => storage.setItem(key, val) }, ip);
 
     throw createError({
-      statusCode: 418, // "I'm a teapot" - fun way to tell bots they are caught
+      statusCode: 418,
       statusMessage: "Not Interested",
       data: { message: "Your IP has been flagged for malicious activity." },
     });
   }
 
+  // 3. Skip shield for whitelisted IPs or excluded routes
   if (
-    url.startsWith("/_nuxt") ||
-    url.includes("favicon.ico") ||
-    url.includes("/api/shield/status") ||
-    !url.startsWith("/api/")
-  )
+    config.whitelist?.includes(ip) ||
+    isExcludedRoute(path, config.excludedRoutes || [])
+  ) {
     return;
+  }
 
-  // 1. Récupération de la config Nuxt
-  const sensitiveMatch = config.sensitiveRoutes.find((r: any) =>
-    url.startsWith(r.path),
-  );
-  const rateLimitOptions = {
-    defaultLimit: {
-      max: sensitiveMatch ? sensitiveMatch.max : config.defaultLimit.max,
-      timeWindow: sensitiveMatch?.timeWindow || config.defaultLimit.timeWindow,
-    },
-    whitelist: config.whitelist,
-  };
+  // 4. Resolve Limit Configuration
+  const routeConfig = resolveRouteConfig(path, config);
 
-  // 2. Préparation du stockage Nitro
-
-  // 3. Appel du cerveau universel
-  // Note comment on passe juste les fonctions .getItem et .setItem
+  // 5. Execute Rate Limit Check (Core Logic)
   const result = await checkRateLimit(
     (key) => storage.getItem(key),
-    (key, val: string) => storage.setItem(key, val),
+    (key, val: any, opts?: any) => storage.setItem(key, val, opts),
     ip,
-    rateLimitOptions,
+    {
+      defaultLimit: {
+        max: routeConfig.max,
+        timeWindow: routeConfig.timeWindow,
+      },
+      // We pass the key prefix to help the core identify the storage bucket
+      keyPrefix: "rate-limit",
+    },
   );
 
-  if (result.isBlocked && sensitiveMatch && config.verbose) {
-    consola.warn(
-      `[SHIELD] 🔥 SENSITIVE ROUTE BLOCKED: ${ip} on ${url} (Limit: ${sensitiveMatch.max})`,
-    );
-  }
-  logger.warn("🛡️ Rate Limit Result", result);
-  // 4. On communique les résultats via les headers
+  // 6. Set HTTP Response Headers (Good practice for API consumers)
   setHeaders(event, {
-    "X-RateLimit-Limit": rateLimitOptions.defaultLimit.max.toString(),
+    "X-RateLimit-Limit": routeConfig.max.toString(),
     "X-RateLimit-Remaining": result.remaining.toString(),
-    "X-RateLimit-Reset": result.resetTime.toString(),
+    "X-RateLimit-Reset": Math.ceil(result.resetTime / 1000).toString(), // Seconds
   });
 
-  // 5. Blocage si nécessaire
+  // 7. Handle Blocked State
   if (result.isBlocked) {
-    // If the count is huge, it means they hit a honeypot or were manually banned
-    const isPermanentBan = result.currentCount > 1000;
+    if (config.verbose) {
+      logger.warn(
+        `[SHIELD] 🛡️ Blocked ${ip} on ${path}. (Limit: ${routeConfig.max})`,
+      );
+    }
+
+    const isBanned = result.currentCount > 1000; // Sign of a previous ban or heavy attack
 
     throw createError({
       statusCode: 429,
-      statusMessage: isPermanentBan ? "Banned" : "Too Many Requests",
+      statusMessage: isBanned ? "Banned" : "Too Many Requests",
       data: {
-        message: isPermanentBan
-          ? "Your IP has been permanently flagged for suspicious activity."
-          : "Too many requests, please slow down.",
+        message: isBanned
+          ? "Your IP has been banned due to suspicious behavior."
+          : "Rate limit exceeded. Please try again later.",
         resetAt: new Date(result.resetTime).toISOString(),
       },
     });
