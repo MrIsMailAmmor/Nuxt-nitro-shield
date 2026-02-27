@@ -43,9 +43,7 @@ export async function checkRateLimit(
     resetTime: number;
   } | null;
 
-  console.warn("🛡️ Rate Limit Data", data);
   if (data && data.count > options.maxRequests) {
-    console.warn("🛡️ Rate Limit Data expired", data);
     return {
       currentCount: data.count,
       remaining: options.maxRequests,

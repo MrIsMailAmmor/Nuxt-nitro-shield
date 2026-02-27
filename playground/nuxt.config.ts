@@ -27,7 +27,7 @@ export default defineNuxtConfig({
         enabled: true,
         token: "123456789",
       },
-      sensitiveRoutes: [],
+      sensitiveRoutes: [{ path: "/api/news", max: 2 }],
     },
   },
 });

@@ -10,7 +10,9 @@ export default defineVitestConfig({
     },
     // On désactive le multithreading qui peut poser problème avec les chemins Windows
     pool: "forks",
+    fileParallelism: false,
   },
+
   // On neutralise les defines qui causent l'erreur "false"
   define: {
     "import.meta.test": "true",
