@@ -1,6 +1,6 @@
 // test/integration.test.ts
 import { describe, it, expect, beforeEach } from "vitest";
-import { setup, $fetch } from "@nuxt/test-utils";
+import { setup, fetch } from "@nuxt/test-utils";
 import { resolve } from "node:path";
 import { cleanIpCache } from "./testUtils/utils";
 import { config } from "./testUtils/config";
@@ -14,7 +14,7 @@ describe("Shield Intelligent Routing", async () => {
       runtimeConfig: {
         rateLimit: {
           ...config,
-          sensitiveRoutes: [{ path: "/api/shield/status", max: 2 }],
+          sensitiveRoutes: [{ path: "/api/auth", max: 2 }],
           honeypots: ["/admin.php"],
           defaultLimit: {
             max: 10,
@@ -27,9 +27,9 @@ describe("Shield Intelligent Routing", async () => {
   beforeEach(async () => await cleanIpCache());
   it("should allow more requests on global routes than sensitive ones", async () => {
     // 1. Test the sensitive route (Limit: 2)
-    const res1 = await fetch("/api/shield/status");
-    const res2 = await fetch("/api/shield/status");
-    const res3 = await fetch("/api/shield/status");
+    const res1 = await fetch("/api/auth");
+    const res2 = await fetch("/api/auth");
+    const res3 = await fetch("/api/auth");
 
     expect(res1.status).toBe(200);
     expect(res2.status).toBe(200);
