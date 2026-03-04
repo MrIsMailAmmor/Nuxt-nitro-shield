@@ -8,7 +8,7 @@ import {
 } from "h3";
 // @ts-expect-error - Nitro auto-imports
 import { useStorage, useRuntimeConfig } from "#imports";
-import { banIP, checkRateLimit } from "../../../core";
+import { banIP, checkRateLimit, getBannedRecord } from "../../../core";
 import { consola } from "consola";
 
 const logger = consola.withTag("nuxt-nitro-shield");
@@ -97,6 +97,22 @@ export default defineEventHandler(async (event: H3Event) => {
     return;
   }
 
+  const bannedRecord = await getBannedRecord((key) => storage.getItem(key), ip);
+
+  if (bannedRecord) {
+    if (config.verbose) {
+      logger.info(`[SHIELD] 🛡️ Pre-blocked known offender: ${ip}`);
+    }
+
+    throw createError({
+      statusCode: 429,
+      statusMessage: "Access Denied",
+      data: {
+        message: "Your IP is currently flagged. Please try again later.",
+        resetAt: new Date(bannedRecord.resetTime).toISOString(),
+      },
+    });
+  }
   // 4. Resolve Limit Configuration
   const routeConfig = resolveRouteConfig(path, config);
 

@@ -69,6 +69,6 @@ describe("Shield Intelligent Routing", async () => {
     // ✅ Il doit être bloqué immédiatement même s'il n'a fait qu'une seule requête sur l'API
     expect(normalRes.status).toBe(429);
     const data = await normalRes.json();
-    expect(data.statusMessage).toBe("Banned");
+    expect(data.statusMessage).toBe("Access Denied");
   });
 });

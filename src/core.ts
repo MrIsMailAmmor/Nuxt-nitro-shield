@@ -130,3 +130,26 @@ export async function cleanupExpiredFiles(storage: {
 
   return { cleaned };
 }
+
+/**
+ * Quick check to see if an IP is already flagged as banned.
+ * Returns the record if banned, otherwise null.
+ */
+export async function getBannedRecord(
+  getItem: (key: string) => Promise<any>,
+  ip: string,
+  prefix?: string,
+): Promise<any | null> {
+  const key = `${prefix || "rate-limit"}:${ip}`;
+  const data = await getItem(key);
+
+  if (!data) return null;
+
+  const now = Date.now();
+  // An IP is considered banned if the flag is true OR if we are still within the reset window and count is over limit
+  const isCurrentlyBlocked =
+    data.isBanned ||
+    (data.count > 0 && now < data.resetTime && data.count > 1000);
+
+  return isCurrentlyBlocked ? data : null;
+}
