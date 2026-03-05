@@ -1,0 +1,13 @@
+services:
+  # The Redis instance for nuxt-nitro-shield testing
+  shield-redis:
+    image: redis:alpine
+    container_name: nuxt-shield-redis
+    ports:
+      - "6379:6379"
+    # Optional: Persist data for debugging RDB files
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
