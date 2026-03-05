@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { setup, fetch } from "@nuxt/test-utils";
 import { resolve } from "node:path";
-import { cleanIpCache } from "./testUtils/utils";
 import { config } from "./testUtils/config";
 
 describe("Shield Intelligent Routing", async () => {
@@ -11,6 +10,13 @@ describe("Shield Intelligent Routing", async () => {
     server: true,
     rootDir: resolve(__dirname, "../playground"),
     nuxtConfig: {
+      nitro: {
+        storage: {
+          shield: {
+            driver: "memory",
+          },
+        },
+      },
       runtimeConfig: {
         rateLimit: {
           ...config,
@@ -24,7 +30,6 @@ describe("Shield Intelligent Routing", async () => {
       },
     },
   });
-  beforeEach(async () => await cleanIpCache());
   it("should allow more requests on global routes than sensitive ones", async () => {
     // 1. Test the sensitive route (Limit: 2)
     const res1 = await fetch("/api/auth");

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { checkRateLimit, cleanupExpiredFiles } from "../src/core";
-import { cleanIpCache } from "./testUtils/utils";
 
 describe("Rate Limit Core Logic", () => {
   let mockStorage: Record<string, any> = {};
@@ -12,7 +11,6 @@ describe("Rate Limit Core Logic", () => {
 
   beforeEach(() => {
     mockStorage = {}; // Reset du stockage avant chaque test
-    cleanIpCache();
   });
 
   it("devrait autoriser la première requête", async () => {

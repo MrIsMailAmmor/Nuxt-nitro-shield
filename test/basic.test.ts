@@ -8,10 +8,17 @@ describe("Module Integration", async () => {
     // On utilise resolve() qui gère les espaces et les backslashes Windows
     server: true,
     rootDir: resolve(__dirname, "../playground"),
+    nuxtConfig: {
+      nitro: {
+        storage: {
+          shield: {
+            driver: "memory",
+          },
+        },
+      },
+    },
   });
-  beforeEach(() => {
-    cleanIpCache();
-  });
+
   it("devrait répondre avec succès", async () => {
     const html = await $fetch("/");
     expect(html).toBeDefined();
