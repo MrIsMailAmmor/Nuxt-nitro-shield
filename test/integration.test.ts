@@ -1,35 +1,17 @@
 // test/integration.test.ts
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { setup, fetch } from "@nuxt/test-utils";
-import { resolve } from "node:path";
-import { config } from "./testUtils/config";
+import { config } from "./testUtils/setup";
 
 describe("Shield Intelligent Routing", async () => {
   // We setup the Nuxt environment with our specific config
-  await setup({
-    server: true,
-    rootDir: resolve(__dirname, "../playground"),
-    nuxtConfig: {
-      nitro: {
-        storage: {
-          shield: {
-            driver: "memory",
-          },
-        },
-      },
-      runtimeConfig: {
-        rateLimit: {
-          ...config,
-          sensitiveRoutes: [{ path: "/api/auth", max: 2 }],
-          honeypots: ["/admin.php"],
-          defaultLimit: {
-            max: 10,
-            timeWindow: 60000,
-          },
-        },
-      },
-    },
-  });
+  await setup(
+    config({
+      sensitiveRoutes: [{ path: "/api/auth", max: 2 }],
+      honeypots: ["/admin.php"],
+    }),
+  );
+
   it("should allow more requests on global routes than sensitive ones", async () => {
     // 1. Test the sensitive route (Limit: 2)
     const res1 = await fetch("/api/auth");

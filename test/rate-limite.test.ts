@@ -1,32 +1,10 @@
-import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import { setup, fetch } from "@nuxt/test-utils/e2e"; // 🛡️ On importe 'fetch' à la place
-import { config } from "./testUtils/config";
+import { config } from "./testUtils/setup";
 
 describe("Rate Limit Integration", async () => {
-  const rootDir = resolve(process.cwd(), "playground");
-  await setup({
-    rootDir,
-    server: true,
-    nuxtConfig: {
-      nitro: {
-        storage: {
-          shield: {
-            driver: "memory",
-          },
-        },
-      },
-      runtimeConfig: {
-        rateLimit: {
-          ...config,
-          defaultLimit: {
-            max: 5,
-            timeWindow: 60000, // 1 minute en millisecondes
-          },
-        },
-      },
-    },
-  });
+  await setup(config({ defaultLimit: { max: 5, timeWindow: 60000 } }));
+
   it("devrait retourner les en-têtes X-RateLimit", async () => {
     // 🛡️ fetch('/') renvoie directement la réponse brute avec les headers
     const response = await fetch("/api/test");
