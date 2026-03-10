@@ -1,113 +1,167 @@
 # 🛡️ Nuxt Nitro Shield
 
-A lightweight, persistent, and "smart" rate-limiting module for Nuxt 3 and Nitro. Protect your API routes from bots and brute-force attacks with built-in Honeypot support.
+A lightweight, robust, and highly configurable security layer for Nuxt 3 and Nuxt 4 and Nitro. Protect your API routes from brute-force attacks, ban malicious bots instantly with honeypots, and manage IP blocks in real-time.
 
-Features
-🚀 Fast & Lightweight: Minimal overhead on your Nitro server.
+## ✨ Features
 
-💾 Persistent: Supports multiple storage drivers (FS, Redis, Memory) via Nitro Storage.
+* 🚀 **Edge-Ready & Fast:** Runs seamlessly in Nitro middleware with minimal overhead.
+* 💾 **Persistent Storage:** Native integration with Nitro Storage (Memory, FileSystem, Redis, Cloudflare KV).
+* 🪤 **Honeypot Traps:** Instantly ban bots scanning for sensitive files (e.g., `/.env`, `/wp-admin`).
+* ⚖️ **Smart Rate Limiting:** Configurable sliding-window limits for global traffic and high-risk routes.
+* 🛠️ **Developer Tools:** Auto-imported Vue composables (`useShield`) and Nitro utilities (`useShieldStatus`).
+* 📊 **Admin Dashboard API:** Built-in endpoints to monitor and manage blocked IPs securely.
 
-🪤 Honeypot: Instantly ban bots trying to access sensitive "trap" routes (e.g., /.env, /admin.php).
+---
 
-⚪ IP Whitelisting: Grant unlimited access to trusted IPs.
+## 📦 Installation
 
-📊 Status API: Secured dashboard to monitor blocked IPs in real-time.
+Add the module to your Nuxt project:
 
-📝 Pro Logging: Clear, scoped logs using consola.
+Here are the updated **Installation** and **Configuration Options** sections for your `README.md`. I have updated the code block to use the correct `runtimeConfig` structure and expanded the table to include every single option you just listed.
 
+## 📦 Installation
 
+Add the module to your Nuxt project:
 
-# Quick Setup
-Installation (Internal use for now):
-Add the module to your nuxt.config.ts:
+```bash
+npm install nuxt-nitro-shield
+
 ```
-TypeScript
+
+Register the module and configure your options in your `nuxt.config.ts`:
+
+```typescript
+export default defineNuxtConfig({
+  modules: ['nuxt-nitro-shield'],
+
+  runtimeConfig: {
+    public: {
+      // The token used by the frontend to authenticate with the admin API
+      shieldToken: "123456789", 
+    },
+    
+    // Server-side private configurations
+    rateLimit: {
+      enabled: true,
+      defaultLimit: {
+        max: 5, // Default maximum requests
+        timeWindow: 60000, // 1 minute default (in milliseconds)
+      },
+      whitelist: ["127.0.0.1", "::1", "8.8.8.8"],
+      excludedRoutes: ["/_nuxt/**", "/favicon.ico"],
+      verbose: true,
+      honeypots: ["/admin.php", "/wp-login.php", "/.env", "/backup.sql"],
+      statusPage: {
+        enabled: true,
+        token: "123456789", // Must match public.shieldToken for dashboard access
+      },
+      sensitiveRoutes: [],
+    },
+  },
+})
+
+```
+
+
+## ⚙️ Configuration Options
+
+All shield settings are configured inside your `nuxt.config.ts` under the `runtimeConfig` object.
+
+| Option | Type | Default / Example | Description |
+| --- | --- | --- | --- |
+| `public.shieldToken` | `string` | `"123456789"` | Exposed to the frontend. Required for the `useShield` composable to authenticate requests to the dashboard API. |
+| `rateLimit.enabled` | `boolean` | `true` | Globally enable or disable the entire shield middleware. |
+| `rateLimit.defaultLimit` | `object` | `{ max: 5, timeWindow: 60000 }` | The standard rate limit applied to all non-excluded routes. |
+| `rateLimit.whitelist` | `string[]` | `["127.0.0.1", "::1", "8.8.8.8"]` | IP addresses that completely bypass all rate limits and honeypots. |
+| `rateLimit.excludedRoutes` | `string[]` | `["/_nuxt/**", "/favicon.ico"]` | Route patterns that the shield will completely ignore. |
+| `rateLimit.verbose` | `boolean` | `true` | Enables detailed logging in your server terminal when IPs are blocked or banned. |
+| `rateLimit.honeypots` | `string[]` | `["/admin.php", "/.env", ...]` | Traps for malicious bots. Accessing these triggers an immediate maximum penalty ban. |
+| `rateLimit.sensitiveRoutes` | `object[]` | `[{ path: "/api/auth", max: 10 }]` | Specific, stricter limits for high-risk endpoints (e.g., login or password reset routes). |
+| `rateLimit.statusPage` | `object` | `{ enabled: true, token: "..." }` | Configuration for the built-in management API. The token here acts as the server-side password. |
+
+```
+
+```
+
+## 💻 Usage: Frontend (Vue)
+
+The module auto-imports the `useShield` composable for use in your Vue components. It allows you to build a custom admin dashboard to manage the shield state.
+
+```vue
+<script setup>
+const { getLogs, unblockIp, clearAll } = useShield()
+
+// Fetch all currently tracked and banned IPs
+const checkStatus = async () => {
+  const logs = await getLogs()
+  console.log(logs)
+}
+
+// Unblock a specific IP
+const pardonUser = async (ipAddress) => {
+  await unblockIp(ipAddress)
+}
+</script>
+
+```
+
+---
+
+## 🔌 Usage: Backend (Nitro)
+
+For custom server-side logic, the module auto-imports `useShieldStatus` into your Nitro environment. You can use this to manually ban users directly from your API routes (e.g., after 5 failed login attempts).
+
+```typescript
+// server/api/login.post.ts
+export default defineEventHandler(async (event) => {
+  const { banIp, getIpStatus } = useShieldStatus()
+  const clientIp = getRequestIP(event)
+
+  const isBanned = await getIpStatus(clientIp)
+  if (isBanned?.isBanned) {
+    throw createError({ statusCode: 403, message: 'IP Banned' })
+  }
+
+  const loginSuccess = false; // Simulate failed login
+
+  if (!loginSuccess) {
+    // Manually trigger a ban from the server
+    await banIp(clientIp, 'Suspicious login activity')
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
+  return { success: true }
+})
+
+```
+
+---
+
+## 🗄️ Storage Drivers
+
+By default, the shield uses Nitro's memory or filesystem driver. For production environments (especially serverless or edge deployments), you should configure a persistent storage driver like Redis.
+
+```typescript
 // nuxt.config.ts
 export default defineNuxtConfig({
-  modules: ['./modules/nuxt-nitro-shield/src/module'],
-
-  rateLimit: {
-    enabled: true,
-    defaultLimit: {
-      max: 10,
-      timeWindow: 60000, // 1 minute
-    },
-    whitelist: ['127.0.0.1'],
-    honeypots: ['/admin.php', '/.env', '/wp-login.php'],
-    statusPage: {
-      enabled: true,
-      token: 'your-secure-token'
-    }
-  },
-
-  // Persistence configuration
   nitro: {
     storage: {
       shield: {
-        driver: 'fs',
-        base: './.data/shield'
+        driver: 'redis',
+        url: process.env.REDIS_URL
       }
     }
   }
 })
+
 ```
 
-
-## Configuration Options
-
-| Option      | Type     | Default                                    | Description |
-|-------------|-----------|-------------------------------------------  |-------------|
-| `enabled`   | boolean   | `true`                                     | Enable or disable the module.
-| `defaultLimit.max` | number    | `5`                                  | Maximum number of requests allowed within the time window.
-| `defaultLimit.timeWindow`  | number    | `60000`                      | Time window in milliseconds. 
-| `whitelist`   | string[]  | `[]`                                      | List of IP addresses that bypass the rate limiter. |
-| `honeypots`   | string[]  | `['/admin.php', '/wp-login.php']`         | Routes that trigger an immediate 24-hour ban when accessed. |
-| `verbose`     | boolean   | `true`                                    | Enable or disable console logging for monitoring and debugging. |
-| `statusPage`  | object    | `{ enabled: true, token: 'your-token' }`  | Enables a secure endpoint to check current blocked IPs. |
-
-
-## 📊 Monitoring
-
-Access the security status endpoint:
-
-
-GET ```/api/shield/status?token=your-secure-token```
-
-
-This endpoint allows you to check:
-- Currently blocked IPs
-- Active rate limit data
-- Shield activity (if enabled)
-
-Make sure to keep your token secure.
+*Note: If your chosen driver supports native TTL (like Redis or Cloudflare KV), the shield will automatically optimize itself to use it.*
 
 ---
 
-## 📦 Package Configuration
+## 📄 License
 
-To make the module ready for installation via `npm install`, ensure your root `package.json` is configured as follows:
+MIT License
 
-```json
-{
-  "name": "nuxt-nitro-shield",
-  "version": "1.0.0",
-  "type": "module",
-  "exports": {
-    ".": "./src/module.ts"
-  },
-  "dependencies": {
-    "@nuxt/kit": "^3.0.0",
-    "consola": "^3.0.0"
-  }
-}
-
-```
-
-This configuration ensures:
-
-- ESM support (type: module)
-
-- Proper entry point export for Nuxt
-
-- Required runtime dependencies
 
