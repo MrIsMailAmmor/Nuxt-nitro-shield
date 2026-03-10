@@ -3,9 +3,13 @@ import { defineVitestConfig } from "@nuxt/test-utils/config";
 export default defineVitestConfig({
   test: {
     environment: "nuxt",
+    globals: true,
     environmentOptions: {
       nuxt: {
         rootDir: "./playground",
+        overrides: {
+          pages: true,
+        },
       },
     },
     // On désactive le multithreading qui peut poser problème avec les chemins Windows

@@ -4,6 +4,8 @@ import {
   createResolver,
   useLogger,
   addServerPlugin,
+  addImports,
+  addServerImports,
 } from "@nuxt/kit";
 
 /**
@@ -102,7 +104,17 @@ export default defineNuxtModule<ModuleOptions>({
   setup(options, nuxt) {
     const { resolve } = createResolver(import.meta.url);
     const logger = useLogger("nuxt-nitro-shield");
-
+    addImports({
+      name: "useShield",
+      as: "useShield",
+      from: resolve("./runtime/composables/useShield.ts"),
+    });
+    addServerImports([
+      {
+        name: "useShieldStatus",
+        from: resolve("./runtime/server/utils/shield"),
+      },
+    ]);
     if (!options.enabled) {
       logger.info("🛡️ Shield is disabled via configuration.");
       return;

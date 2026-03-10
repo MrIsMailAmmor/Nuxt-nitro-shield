@@ -12,6 +12,9 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   compatibilityDate: "latest",
   runtimeConfig: {
+    public: {
+      shieldToken: "123456789", // Match the token above
+    },
     // Tout ce qui est défini directement ici est PRIVÉ (accessible uniquement côté serveur)
     rateLimit: {
       enabled: true,

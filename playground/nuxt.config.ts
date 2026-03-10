@@ -32,5 +32,8 @@ export default defineNuxtConfig({
       },
       sensitiveRoutes: [{ path: "/api/news", max: 2 }],
     },
+    public: {
+      shieldToken: "123456789", // Match the token above
+    },
   },
 });
