@@ -1,8 +1,21 @@
 {
-  "name": "my-module",
-  "version": "1.0.0",
-  "description": "My new Nuxt module",
-  "repository": "your-org/my-module",
+  "name": "nuxt-nitro-shield",
+  "version": "1.1.0",
+  "description": "A lightweight, robust security and rate-limiting layer for Nuxt 3 and Nitro.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrIsMailAmmor/Nuxt-nitro-shield"
+  },
+  "keywords": [
+    "nuxt",
+    "nuxt3",
+    "nitro",
+    "security",
+    "rate-limit",
+    "firewall",
+    "shield"
+  ],
+  "author": "Your Name <your.email@example.com>",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -56,6 +69,7 @@
     "happy-dom": "^20.7.0",
     "nuxt": "^4.3.1",
     "typescript": "~5.9.3",
+    "unbuild": "^3.6.1",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.2.5"
   }
