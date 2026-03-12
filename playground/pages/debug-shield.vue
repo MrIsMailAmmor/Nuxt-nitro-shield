@@ -17,7 +17,6 @@
       "
     >
       <button
-        @click="fetchData"
         style="
           margin-right: 10px;
           padding: 5px 10px;
@@ -26,11 +25,11 @@
           border: 1px solid #ccc;
           border-radius: 4px;
         "
+        @click="fetchData"
       >
         🔄 Refresh Logs
       </button>
       <button
-        @click="nuke"
         style="
           color: white;
           background: red;
@@ -39,6 +38,7 @@
           cursor: pointer;
           border-radius: 4px;
         "
+        @click="nuke"
       >
         ⚠️ Clear All Blocks
       </button>
@@ -90,17 +90,16 @@
             <p style="margin: 0 0 5px 0">
               <strong>Requests:</strong> {{ log.requests }}
             </p>
-            <p style="margin: 0 0 5px 0" v-if="log.expiresAt">
+            <p v-if="log.expiresAt" style="margin: 0 0 5px 0">
               <strong>Ban Expires:</strong>
               {{ new Date(log.expiresAt).toLocaleString() }}
             </p>
-            <p style="margin: 0" v-if="log.timeLeftSeconds">
+            <p v-if="log.timeLeftSeconds" style="margin: 0">
               <strong>Time Left:</strong> {{ log.timeLeftSeconds }} seconds
             </p>
           </div>
 
           <button
-            @click="unblock(log.ip)"
             style="
               cursor: pointer;
               background: white;
@@ -108,6 +107,7 @@
               padding: 5px 10px;
               border-radius: 4px;
             "
+            @click="unblock(log.ip)"
           >
             🔓 Lift Ban
           </button>
@@ -130,17 +130,17 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import type { ShieldStatus } from "../../src/runtime/composables/useShield";
 
 const { getLogs, unblockIp, clearAll } = useShield();
 const logs = ref<ShieldStatus>();
-
 const fetchData = async () => {
   try {
     logs.value = await getLogs();
-    console.log("Fetched logs:", logs.value.entries);
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error("Fetch failed! Is the token correct in nuxt.config?", error);
   }
 };

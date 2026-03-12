@@ -1,12 +1,18 @@
 {
-  "extends": "./.nuxt/tsconfig.json",
-
-  "exclude": ["dist", "node_modules", "playground"],
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
     "paths": {
-      "~/*": ["./*"],
-      "@/*": ["./*"],
-      "#imports": ["./.nuxt/imports"]
+      "#imports": ["./playground/.nuxt/imports.d.ts"]
     }
-  }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "playground", "test"]
 }

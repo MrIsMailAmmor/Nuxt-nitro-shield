@@ -125,31 +125,7 @@ export default defineNuxtModule<ModuleOptions>({
       middleware: true,
       handler: resolve("./runtime/server/middleware/rate-limite"),
     });
-    const storageConfig = nuxt.options.nitro.storage?.["shield"];
-    const driverName = String(storageConfig?.driver || "");
 
-    // Redis et Cloudflare KV gèrent le TTL tout seuls, pas besoin de notre cleanup.ts
-    const hasNativeTTL = [
-      "redis",
-      "cloudflare-kv",
-      "cloudflareKV",
-      "ioredis",
-    ].includes(driverName);
-
-    if (!hasNativeTTL) {
-      if (options.verbose) {
-        logger.info(
-          "🧹 Storage driver lacks native TTL. Registering cleanup plugin...",
-        );
-      }
-      addServerPlugin(resolve("./runtime/server/plugins/cleanup"));
-    } else {
-      if (options.verbose) {
-        logger.info(
-          `🚀 Storage driver (${driverName}) handles TTL natively. Cleanup plugin skipped.`,
-        );
-      }
-    }
     // GET: View stats and blocked IPs
     addServerHandler({
       route: "/api/auth",

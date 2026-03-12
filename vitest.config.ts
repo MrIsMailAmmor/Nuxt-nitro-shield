@@ -1,32 +1,32 @@
-import { defineVitestConfig } from "@nuxt/test-utils/config";
+import { defineVitestConfig } from '@nuxt/test-utils/config'
 
 export default defineVitestConfig({
   test: {
-    environment: "nuxt",
+    environment: 'nuxt',
     globals: true,
     environmentOptions: {
       nuxt: {
-        rootDir: "./playground",
+        rootDir: './playground',
         overrides: {
           pages: true,
         },
       },
     },
     // On désactive le multithreading qui peut poser problème avec les chemins Windows
-    pool: "forks",
+    pool: 'forks',
     fileParallelism: false,
   },
 
   // On neutralise les defines qui causent l'erreur "false"
   define: {
-    "import.meta.test": "true",
+    'import.meta.test': 'true',
   },
   resolve: {
     alias: {
-      "bun:test": "node:events",
+      'bun:test': 'node:events',
       // On force les alias de racine pour éviter les problèmes d'espaces
-      "~": "./",
-      "@": "./",
+      '~': './',
+      '@': './',
     },
   },
-});
+})

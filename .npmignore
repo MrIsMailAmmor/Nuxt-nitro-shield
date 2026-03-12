@@ -1,0 +1,6 @@
+# .npmignore
+playground/
+test/
+.github/
+.vscode/
+vitest.config.ts

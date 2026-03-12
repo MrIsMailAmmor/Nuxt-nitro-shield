@@ -16,7 +16,7 @@ const rateLimitConfig = {
   sensitiveRoutes: [],
 };
 
-const config = (config: {}) => {
+const config = (config: object) => {
   const rootDir = resolve(process.cwd(), "playground");
   return {
     server: true,

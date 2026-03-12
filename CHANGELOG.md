@@ -1,6 +1,10 @@
 # Changelog
 
 
+## v1.1.2
+
+[compare changes](https://github.com/MrIsMailAmmor/Nuxt-nitro-shield/compare/v1.1.1...v1.1.2)
+
 ## v1.1.1
 
 [compare changes](https://github.com/MrIsMailAmmor/Nuxt-nitro-shield/compare/v1.1.0...v1.1.1)

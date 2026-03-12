@@ -1,6 +1,7 @@
 {
   "private": true,
-  "name": "my-module-playground",
+  "name": "nuxt-nitro-shield-playground",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",

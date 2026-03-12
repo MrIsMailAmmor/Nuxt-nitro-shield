@@ -4,10 +4,10 @@
   >
     <div
       class="absolute top-0 -left-4 w-72 h-72 bg-white/5 rounded-full blur-[120px] pointer-events-none"
-    ></div>
+    />
     <div
       class="absolute bottom-0 -right-4 w-96 h-96 bg-white/5 rounded-full blur-[150px] pointer-events-none"
-    ></div>
+    />
 
     <div
       class="relative max-w-2xl w-full text-center space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000"
@@ -16,7 +16,7 @@
         <h1
           class="text-[12rem] md:text-[16rem] font-black leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white/80 to-transparent opacity-20 select-none"
         >
-          {{ error?.statusCode }}
+          {{ error.status }}
         </h1>
         <div class="absolute inset-0 flex items-center justify-center">
           <span
@@ -39,14 +39,14 @@
         <div class="flex justify-center">
           <div
             class="h-[1px] w-24 bg-gradient-to-r from-transparent via-white/40 to-transparent"
-          ></div>
+          />
         </div>
 
         <p
           class="text-lg text-white/50 max-w-md mx-auto leading-relaxed font-light"
         >
           {{ error?.statusMessage || error?.message }}
-          <br />
+          <br >
           <span
             v-if="error?.statusCode === 429"
             class="text-sm mt-4 block text-white/30 uppercase tracking-widest"
@@ -58,13 +58,13 @@
 
       <div class="pt-8">
         <button
-          @click="handleError"
           class="group relative px-12 py-4 bg-white text-black font-bold uppercase tracking-widest text-sm transition-all duration-300 hover:scale-105 active:scale-95 overflow-hidden"
+          @click="handleError"
         >
           <span class="relative z-10">Réessayer l'accès</span>
           <div
             class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"
-          ></div>
+          />
         </button>
       </div>
 
