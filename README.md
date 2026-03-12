@@ -17,12 +17,6 @@ A lightweight, robust, and highly configurable security layer for Nuxt 3 and Nux
 
 Add the module to your Nuxt project:
 
-Here are the updated **Installation** and **Configuration Options** sections for your `README.md`. I have updated the code block to use the correct `runtimeConfig` structure and expanded the table to include every single option you just listed.
-
-## 📦 Installation
-
-Add the module to your Nuxt project:
-
 ```bash
 npm install nuxt-nitro-shield
 
